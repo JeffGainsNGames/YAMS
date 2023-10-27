@@ -146,6 +146,9 @@ public class Patcher
 
             foreach (var filePath in Directory.GetFiles(dirPath))
             {
+                string extension = new FileInfo(filePath).Extension;
+                if (String.IsNullOrWhiteSpace(extension) || extension == ".md" || extension == ".txt")
+                    continue;
                 var sprite = Image.Load(filePath);
                 currentShelfHeight = Math.Max(currentShelfHeight, sprite.Height);
                 if ((lastUsedX + sprite.Width) > pageDimension)
@@ -769,6 +772,9 @@ public class Patcher
         ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oSlotMenu_normal_only_Create_0"),
             "d0str = get_text(\"Title-Additions\", \"GameSlot_NewGame_NormalGame\")", "d0str = \"Randovania\";");
 
+        // Add Credits
+        ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oCreditsText_Create_0"), "/Japanese Community;;;;", "/Japanese Community;;;*AM2R Randovania Credits;;*Development;Miepee=JesRight;;*Logic Database;Miepee=JeffGainsNGames;/Esteban 'DruidVorse' Criado;;*Art;ShirtyScarab=AbyssalCreature;;/With contributions from many others;;;");
+
         // Unlock fusion etc. by default
         var unlockStuffCode = gmData.Code.ByName("gml_Object_oControl_Other_2");
         AppendGMLInCode(unlockStuffCode, "global.mod_fusion_unlocked = 1; global.mod_gamebeaten = 1;");
@@ -779,6 +785,7 @@ public class Patcher
 
         // Fix varia cutscene
         ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oSuitChangeFX_Step_0"), "bg1alpha = 0", "bg1alpha = 0; instance_create(x, y, oSuitChangeFX2);");
+        ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oSuitChangeFX2_Create_0"), "image_index = 1133", "sprite_indx = sSuitChangeFX2_fusion");
 
         // Make beams not instantly despawn when out of screen
         ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oBeam_Step_0"),
@@ -1421,7 +1428,7 @@ public class Patcher
             "check_areaclear(); with (instance_create(oCharacter.x, oCharacter.y, scr_DNASpawn(myid))) { active = 1; itemtype = 1; changeOnMap = false} with (oMusicV2) { if (alarm[4] >= 0) alarm[4] = 120; }");
 
         // Make new global.lavastate 11 that requires 46 dna to be collected
-        SubstituteGMLCode(gmData.Code.ByName("gml_Script_check_areaclear"), "if (global.lavastate == 11) { if (global.dna >= 46) { instance_create(0, 0, oBigQuake); global.lavastate = 12; } }");
+        SubstituteGMLCode(gmData.Code.ByName("gml_Script_check_areaclear"), "var spawnQuake = is_undefined(argument0); if (global.lavastate == 11) { if (global.dna >= 46) { if (spawnQuake) instance_create(0, 0, oBigQuake); global.lavastate = 12; } }");
 
         // Check lavastate at labs
         var labsRoom = gmData.Rooms.ByName("rm_a7b04A");
@@ -1611,7 +1618,7 @@ public class Patcher
 
         // Set lava state and the metroid scanned events
         AppendGMLInCode(characterVarsCode, "global.lavastate = 11; global.event[4] = 1; global.event[56] = 1;" +
-                                           " global.event[155] = 1; global.event[173] = 1; global.event[204] = 1; global.event[259] = 1");
+                                           " global.event[155] = 1; global.event[173] = 1; global.event[204] = 1; global.event[259] = 1; check_areaclear(1)");
 
         // Improve when expansions trigger big pickup text and popup_text
         PrependGMLInCode(characterVarsCode, "global.firstMissileCollected = 0; global.firstSMissileCollected = 0; " +
@@ -3520,8 +3527,13 @@ public class Patcher
         ssFGEvent.Actions.Add(ssFGAction);
         ssFGCollisionList.Add(ssFGEvent);
 
+        // Adjust pause screen text to mention room names
+        ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oSS_Fg_Create_0"), "tip2text = get_text(\"Subscreen\", \"Marker_Tip\")", "tip2text = \"| - Marker & Room Names\"");
 
         // TODO: rewrite log rendering to have color
+
+        // Add spoiler log in credits when finished game normally
+        ReplaceGMLInCode(gmData.Code.ByName("gml_Object_oCreditsText_Create_0"), "TEXT_ROWS = ", $"if (!global.creditsmenuopt) text = \"{seedObject.CreditsSpoiler}\" + text;\n TEXT_ROWS = ");
 
 
         // Multiworld stuff
