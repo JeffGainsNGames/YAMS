@@ -16,7 +16,8 @@ public class SeedObject
     [JsonPropertyName("game_patches")]
     public GamePatches Patches;
 
-    [JsonInclude] [JsonPropertyName("door_locks")]
+    [JsonInclude]
+    [JsonPropertyName("door_locks")]
     public Dictionary<uint, DoorLock> DoorLocks;
 
     [JsonInclude]
@@ -52,11 +53,31 @@ public class SeedObject
     public string CreditsSpoiler;
 }
 
+[JsonConverter(typeof(JsonStringEnumMemberConverter))]
+public enum DoorFacingDirection
+{
+    [EnumMember(Value = "left")]
+    Left,
+    [EnumMember(Value = "right")]
+    Right,
+    [EnumMember(Value = "invalid")]
+    Invalid,
+}
+
 public class DoorLock
 {
     [JsonInclude]
     [JsonPropertyName("lock")]
     public DoorLockType Lock;
+
+    // TODO: add these two to the schema.
+    [JsonInclude]
+    [JsonPropertyName("is_dock")]
+    public bool isDock;
+
+    [JsonInclude]
+    [JsonPropertyName("facing_direction")]
+    public DoorFacingDirection FacingDirection;
 }
 
 [JsonConverter(typeof(JsonStringEnumMemberConverter))]
@@ -128,6 +149,8 @@ public enum DoorLockType
     Locked,
     [EnumMember(Value = "Hydro Station Water Turbine")]
     A2WaterTurbine,
+    [EnumMember(Value = "Research Site Open Hatch")]
+    ResearchHatch,
 }
 
 [JsonConverter(typeof(JsonStringEnumMemberConverter))]
@@ -296,6 +319,10 @@ public class ConfigurationIdentifier
     [JsonInclude]
     [JsonPropertyName("patcher_version")]
     public string PatcherVersion = "YAMS";
+
+    [JsonInclude]
+    [JsonPropertyName("starting_memo")]
+    public TextDetails? StartingMemoText;
 }
 
 
@@ -303,6 +330,7 @@ public class StartingLocationObject
 {
     [JsonInclude]
     [JsonPropertyName("save_room")]
+    // TODO: For ease of use, this should be 3 fields: a string for room name, and two int positions for x/y start.
     public int SaveRoom;
 }
 
