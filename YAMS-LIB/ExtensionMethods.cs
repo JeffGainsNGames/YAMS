@@ -1,6 +1,8 @@
 using UndertaleModLib;
 using UndertaleModLib.Decompiler;
 using UndertaleModLib.Models;
+using System.Reflection;
+using System.Runtime.Serialization;
 
 namespace YAMS_LIB;
 
@@ -84,5 +86,35 @@ public static class ExtensionMethods
             ScaleY = scaleY,
             InstanceID = id.Value
         };
+    }
+
+    public static string? GetEnumMemberValue<T>(this T value)
+        where T : Enum
+    {
+        return typeof(T)
+            .GetTypeInfo()
+            .DeclaredMembers
+            .SingleOrDefault(x => x.Name == value.ToString())
+            ?.GetCustomAttribute<EnumMemberAttribute>(false)
+            ?.Value;
+    }
+
+    public static void AddScript(this IList<UndertaleScript> list, string name, string code)
+    {
+        var codeEntry = new UndertaleCode() { Name = gmData.Strings.MakeString($"gml_Script_{name}") };
+        gmData.Code.Add(codeEntry);
+        // add locals - TODO: add these everywhere where we add code!!!
+        UndertaleCodeLocals locals = new UndertaleCodeLocals();
+        locals.Name = codeEntry.Name;
+        UndertaleCodeLocals.LocalVar argsLocal = new UndertaleCodeLocals.LocalVar();
+        argsLocal.Name = gmData.Strings.MakeString("arguments");
+        argsLocal.Index = 0;
+        locals.Locals.Add(argsLocal);
+        codeEntry.LocalsCount = 1;
+        gmData.CodeLocals.Add(locals);
+
+        codeEntry.SubstituteGMLCode(code);
+        var script = new UndertaleScript() { Code = codeEntry, Name = gmData.Strings.MakeString(name)};
+        gmData.Scripts.Add(script);
     }
 }

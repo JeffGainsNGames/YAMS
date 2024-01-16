@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
+using NaturalSort.Extension;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
@@ -155,7 +156,7 @@ public class Patcher
         UndertaleSimpleList<UndertaleSprite.TextureEntry> GetTexturePageItemsForSpriteName(string name)
         {
             var list = new UndertaleSimpleList<UndertaleSprite.TextureEntry>();
-            foreach (string key in nameToPageItemDict.Keys.OrderBy(k => k))
+            foreach (string key in nameToPageItemDict.Keys.OrderBy(k => k, StringComparison.OrdinalIgnoreCase.WithNaturalSort()))
             {
                 if (key.StartsWith(name)) list.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict[key]] });
             }
@@ -243,6 +244,15 @@ public class Patcher
         gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_7"]] });
         gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_8"]] });
         gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_9"]] });
+
+        void CreateAndAddItemSprite(string name)
+        {
+            gmData.Sprites.Add(new UndertaleSprite
+            {
+                Name = gmData.Strings.MakeString(name), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
+                Textures = GetTexturePageItemsForSpriteName(name + "_")
+            });
+        }
 
         gmData.Sprites.Add(new UndertaleSprite
         {
@@ -448,126 +458,70 @@ public class Patcher
 
         #region MW sprites
 
+        CreateAndAddItemSprite("sItemRDV");
+
         #region Prime1
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemArtifact"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemArtifact_")
-        });
+        CreateAndAddItemSprite("sItemArtifactPrime");
+        CreateAndAddItemSprite("sItemBombsPrime");
+        CreateAndAddItemSprite("sItemBoostBallPrime");
+        CreateAndAddItemSprite("sItemCombatVisorPrime");
+        CreateAndAddItemSprite("sItemFlamethrowerPrime");
+        CreateAndAddItemSprite("sItemGrappleBeamPrime");
+        CreateAndAddItemSprite("sItemGravitySuitPrime");
+        CreateAndAddItemSprite("sItemIceBeamPrime");
+        CreateAndAddItemSprite("sItemIceSpreaderPrime");
+        CreateAndAddItemSprite("sItemMorphBallPrime");
+        CreateAndAddItemSprite("sItemPhazonSuitPrime");
+        CreateAndAddItemSprite("sItemPlasmaBeamPrime");
+        CreateAndAddItemSprite("sItemPowerBeamPrime");
+        CreateAndAddItemSprite("sItemPowerBombLauncherPrime");
+        CreateAndAddItemSprite("sItemScanVisorPrime");
+        CreateAndAddItemSprite("sItemSuperMissilePrime");
+        CreateAndAddItemSprite("sItemThermalVisorPrime");
+        CreateAndAddItemSprite("sItemVariaSuitPrime");
+        CreateAndAddItemSprite("sItemWaveBeamPrime");
+        CreateAndAddItemSprite("sItemWaveBusterPrime");
+        CreateAndAddItemSprite("sItemXrayVisorPrime");
+        #endregion
+        #region Prime 2 Echoes
+        CreateAndAddItemSprite("sItemAmberEchoes");
+        CreateAndAddItemSprite("sItemAnnihilatorEchoes");
+        CreateAndAddItemSprite("sItemBeamAmmoEchoes");
+        CreateAndAddItemSprite("sItemCannonBallEchoes");
+        CreateAndAddItemSprite("sItemCobaltEchoes");
+        CreateAndAddItemSprite("sItemDarkAgonKeyEchoes");
+        CreateAndAddItemSprite("sItemDarkAmmoEchoes");
+        CreateAndAddItemSprite("sItemDarkBeamEchoes");
+        CreateAndAddItemSprite("sItemDarkSuitEchoes");
+        CreateAndAddItemSprite("sItemDarkTorvusKeyEchoes");
+        CreateAndAddItemSprite("sItemDarkVisorEchoes");
+        CreateAndAddItemSprite("sItemDarkburstEchoes");
+        CreateAndAddItemSprite("sItemEchoVisorEchoes");
+        CreateAndAddItemSprite("sItemEmeraldEchoes");
+        CreateAndAddItemSprite("sItemIngHiveKeyEchoes");
+        CreateAndAddItemSprite("sItemLightAmmoEchoes");
+        CreateAndAddItemSprite("sItemLightBeamEchoes");
+        CreateAndAddItemSprite("sItemLightSuitEchoes");
+        CreateAndAddItemSprite("sItemPowerBombLauncherEchoes");
+        CreateAndAddItemSprite("sItemProgressiveSuitEchoes");
+        CreateAndAddItemSprite("sItemScrewAttackEchoes");
+        CreateAndAddItemSprite("sItemSeekerMissileEchoes");
+        CreateAndAddItemSprite("sItemSkyTempleKeyEchoes");
+        CreateAndAddItemSprite("sItemSuperMissileEchoes");
+        CreateAndAddItemSprite("sItemSonicBoomEchoes");
+        CreateAndAddItemSprite("sItemVioletEchoes");
+        #endregion
 
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemBoostBallPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemBoostBallPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemCombatVisorPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemCombatVisorPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemFlamethrowerPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemFlamethrowerPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemGrappleBeamPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemGrappleBeamPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemGravitySuit"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemGravitySuit_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemIceBeamPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemIceBeamPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemIceSpreaderPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemIceSpreaderPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemMorphBallPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemMorphBallPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemPhazonSuitPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemPhazonSuitPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemPlasmaBeamPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemPlasmaBeamPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemPowerBeamPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemPowerBeamPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemPowerBombLauncherPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemPowerBombLauncherPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemScanVisorPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemScanVisorPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemSuperMissilePrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemSuperMissilePrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemThermalVisorPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemThermalVisorPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemVariaSuitPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemVariaSuitPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemWaveBeamPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemWaveBeamPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemWaveBusterPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemWaveBusterPrime_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemXrayVisorPrime"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemXrayVisorPrime_")
-        });
+        #region Metroid Dread
+        CreateAndAddItemSprite("sItemCrossBombsDread");
+        CreateAndAddItemSprite("sItemEPartDread");
+        CreateAndAddItemSprite("sItemGrappleBeamDread");
+        CreateAndAddItemSprite("sItemIceMissilesDread");
+        CreateAndAddItemSprite("sItemMorphBallDread");
+        CreateAndAddItemSprite("sItemSpeedBoosterDread");
+        CreateAndAddItemSprite("sItemSpiderMagnetDread");
+        CreateAndAddItemSprite("sItemSpinBoostDread");
+        CreateAndAddItemSprite("sItemStormMissilesDread");
         #endregion
         #endregion
 
@@ -1953,7 +1907,7 @@ public class Patcher
                                                 """);
 
         // Save current hash seed, so we can compare saves later
-        characterVarsCode.PrependGMLInCode($"global.gameHash = \"{seedObject.Identifier.WordHash} ({seedObject.Identifier.Hash})\"");
+        characterVarsCode.PrependGMLInCode($"global.gameHash = \"{seedObject.Identifier.WordHash} ({seedObject.Identifier.Hash}) (World: {seedObject.Identifier.WorldUUID})\"");
 
         // modify gravity pod room to *always* spawn an item
         gmData.Code.ByName("gml_Room_rm_a5a07_Create").ReplaceGMLInCode("if (oControl.mod_gravity != 9)", "");
@@ -2104,6 +2058,9 @@ public class Patcher
                                           ds_list_add(list, global.flashlightLevel)
                                           ds_list_add(list, global.speedBoosterFramesReduction)
                                           ds_list_add(list, global.showStartingMemo)
+                                          ds_list_add(list, global.lastOffworldNumber)
+                                          ds_list_add(list, global.collectedIndices)
+                                          ds_list_add(list, global.collectedItems)
                                           str_list = ds_list_write(list)
                                           ds_list_clear(list)
                                           return str_list;
@@ -2153,6 +2110,15 @@ public class Patcher
                                           global.flashlightLevel = readline()
                                           global.speedBoosterFramesReduction = readline();
                                           global.showStartingMemo = readline();
+                                          global.lastOffworldNumber = readline();
+                                          if (global.lastOffworldNumber == undefined)
+                                            global.lastOffworldNumber = 0
+                                          global.collectedIndices = readline();
+                                          if (global.collectedIndices == undefined || global.collectedIndices == 0)
+                                            global.collectedIndices = "locations:"
+                                          global.collectedItems = readline();
+                                          if (global.collectedItems == undefined || global.collectedItems == 0)
+                                            global.collectedItems = "items:"
                                           ds_list_clear(list)
                                           """);
         gmData.Code.Add(loadGlobalsCode);
@@ -2183,10 +2149,10 @@ public class Patcher
                                  """, "");
 
         //complain if invalid game hash
-        sv6load.PrependGMLInCode($"var uniqueGameHash = \"{seedObject.Identifier.WordHash} ({seedObject.Identifier.Hash})\"");
+        sv6load.PrependGMLInCode($"var uniqueGameHash = \"{seedObject.Identifier.WordHash} ({seedObject.Identifier.Hash}) (World: {seedObject.Identifier.WorldUUID})\"");
         sv6load.ReplaceGMLInCode("global.playerhealth = global.maxhealth",
             "if (global.gameHash != uniqueGameHash) { " +
-            "show_message(\"Save file is from another seed! (\" + global.gameHash + \")\"); " +
+            "show_message(\"Save file is from another seed or Multiworld word! (\" + global.gameHash + \")\"); " +
             "file_text_close(fid); file_delete((filename + \"d\")); room_goto(titleroom); exit;" +
             "} global.playerhealth = global.maxhealth");
         // TODO: instead of just show_messsage, have an actual proper in-game solution. Maybe do this after MW
@@ -2226,6 +2192,7 @@ public class Patcher
         bool alreadyAddedMissiles = false;
         bool alreadyAddedSupers = false;
         bool alreadyAddedPBombs = false;
+        characterVarsCode.AppendGMLInCode("global.collectedItems = \"items:\"");
         foreach ((ItemEnum item, int quantity) in seedObject.StartingItems)
         {
             int finalQuantity = quantity;
@@ -2363,6 +2330,7 @@ public class Patcher
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            characterVarsCode.AppendGMLInCode($"global.collectedItems += \"{item.GetEnumMemberValue()}|{quantity},\"");
         }
 
         // Check whether option has been set for non-main launchers or if starting with them, if yes enable the main launchers in character var
@@ -2453,6 +2421,129 @@ public class Patcher
         // Door locks
         DoorLockRando.Apply(gmData, decompileContext, seedObject);
 
+        // Add new item name variable for oItem, necessary for MW
+        gmData.Code.ByName("gml_Object_oItem_Create_0").AppendGMLInCode("itemName = \"\"; itemQuantity = 0;");
+
+        // Add new item scripts
+        gmData.Scripts.AddScript("get_etank", "scr_energytank_character_event()");
+        gmData.Scripts.AddScript("get_missile_expansion", $"if (!global.missileLauncher) {{ text1 = \"{seedObject.Patches.LockedMissileText.Header}\"; " +
+                                                          $"text2 = \"{seedObject.Patches.LockedMissileText.Description}\" }} global.collectedItems += (\"{ItemEnum.Missile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_missile_character_event(argument0)");
+        gmData.Scripts.AddScript("get_missile_launcher", $"global.missileLauncher = 1; global.maxmissiles += argument0; global.missiles = global.maxmissiles; global.collectedItems += (\"{ItemEnum.Missile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
+        gmData.Scripts.AddScript("get_super_missile_expansion", $"if (!global.SMissileLauncher) {{ text1 = \"{seedObject.Patches.LockedSuperText.Header}\"; " +
+                                                                $"text2 = \"{seedObject.Patches.LockedSuperText.Description}\" }} global.collectedItems += (\"{ItemEnum.SuperMissile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_supermissile_character_event(argument0)");
+        gmData.Scripts.AddScript("get_super_missile_launcher", $"global.SMissileLauncher = 1; global.maxsmissiles += argument0; global.smissiles = global.maxsmissiles; global.collectedItems += (\"{ItemEnum.SuperMissile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
+        gmData.Scripts.AddScript("get_pb_expansion", $"if (!global.PBombLauncher) {{ text1 = \"{seedObject.Patches.LockedPBombText.Header}\"; " +
+                                                     $"text2 = \"{seedObject.Patches.LockedPBombText.Description}\" }} global.collectedItems += (\"{ItemEnum.PBomb.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_powerbomb_character_event(argument0)");
+        gmData.Scripts.AddScript("get_pb_launcher", $"global.PBombLauncher = 1; global.maxpbombs += argument0; global.pbombs = global.maxpbombs; global.collectedItems += (\"{ItemEnum.PBomb.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
+        gmData.Scripts.AddScript("get_dna", "global.dna++; check_areaclear(); ");
+        gmData.Scripts.AddScript("get_bombs", "global.bomb = 1; global.hasBombs = 1;");
+        gmData.Scripts.AddScript("get_power_grip", "global.powergrip = 1; global.hasPowergrip = 1;");
+        gmData.Scripts.AddScript("get_spider_ball", "global.spiderball = 1; global.hasSpiderball = 1;");
+        gmData.Scripts.AddScript("get_spring_ball", "global.jumpball = 1; global.hasJumpball = 1; ");
+        gmData.Scripts.AddScript("get_screw_attack", "global.screwattack = 1; global.hasScrewattack = 1; with (oCharacter) sfx_stop(spinjump_sound);");
+        gmData.Scripts.AddScript("get_varia", """
+                                              global.SuitChange = !global.skipItemFanfare;
+                                              // If any Metroid exists, force suit cutscene to be off
+                                              if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
+                                                  global.SuitChange = 0;
+                                              if collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true)
+                                                  global.SuitChange = 0;
+                                              if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
+                                                  global.SuitChange = 0;
+                                              global.SuitChangeX = x;
+                                              global.SuitChangeY = y;
+                                              global.SuitChangeGravity = 0;
+
+                                              var hasOCharacter = false;
+                                              global.hasVaria = 1;
+                                              with (oCharacter)
+                                              {
+                                                  hasOCharacter = true
+                                                  alarm[1] = 1;
+                                              }
+                                              if (!hasOCharacter) global.currentsuit = 1
+                                              """);
+        gmData.Scripts.AddScript("get_space_jump", "global.spacejump = 1; global.hasSpacejump = 1; with (oCharacter) sfx_stop(spinjump_sound);");
+        gmData.Scripts.AddScript("get_speed_booster", "global.speedbooster = 1; global.hasSpeedbooster = 1;");
+        gmData.Scripts.AddScript("get_hijump", "global.hijump = 1; global.hasHijump = 1;");
+        gmData.Scripts.AddScript("get_progressive_jump", "if (global.hasSpacejump) exit; else if (global.hasHijump) { global.spacejump = 1; global.hasSpacejump = 1; with (oCharacter) sfx_stop(spinjump_sound); } else { global.hijump = 1; global.hasHijump = 1;} ");
+        gmData.Scripts.AddScript("get_gravity", """
+                                                global.SuitChange = !global.skipItemFanfare;
+                                                // If any Metroid exists, force suit cutscene to be off
+                                                if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
+                                                    global.SuitChange = 0;
+                                                if (collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true))
+                                                    global.SuitChange = 0;
+                                                if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
+                                                    global.SuitChange = 0;
+                                                global.SuitChangeX = x;
+                                                global.SuitChangeY = y;
+                                                global.SuitChangeGravity = 1;
+
+                                                global.hasGravity = 1;
+                                                var hasOCharacter = false;
+                                                with (oCharacter)
+                                                {
+                                                    hasOCharacter = true
+                                                    alarm[4] = 1;
+                                                }
+                                                if (!hasOCharacter) global.currentsuit = 2
+                                                """);
+        gmData.Scripts.AddScript("get_progressive_suit", """
+                                                         global.SuitChange = !global.skipItemFanfare;
+                                                         // If any Metroid exists, force suit cutscene to be off
+                                                         if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
+                                                             global.SuitChange = 0;
+                                                         if (collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true))
+                                                             global.SuitChange = 0;
+                                                         if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
+                                                             global.SuitChange = 0;
+                                                         global.SuitChangeX = x;
+                                                         global.SuitChangeY = y;
+
+                                                         if (global.hasGravity) exit
+                                                         else if (global.hasVaria)
+                                                         {
+                                                             global.hasGravity = 1;
+                                                             global.SuitChangeGravity = 1;
+                                                         }
+                                                         else
+                                                         {
+                                                             global.hasVaria = 1;
+                                                             global.SuitChangeGravity = 0;
+                                                         }
+                                                         var hasOCharacter = false;
+                                                         with (oCharacter)
+                                                         {
+                                                             hasOCharacter = true;
+                                                             if (global.hasGravity)
+                                                                 alarm[4] = 1;
+                                                             else if (global.hasVaria)
+                                                                 alarm[1] = 1;
+                                                         }
+                                                         if (!hasOCharacter)
+                                                         {
+                                                             if (global.hasGravity)
+                                                                 global.currentsuit = 2;
+                                                             else if (global.hasVaria)
+                                                                 global.currentsuit = 1;
+                                                         }
+                                                         """);
+        gmData.Scripts.AddScript("get_charge_beam", "global.cbeam = 1; global.hasCbeam = 1;");
+        gmData.Scripts.AddScript("get_ice_beam", "global.ibeam = 1; global.hasIbeam = 1; ");
+        gmData.Scripts.AddScript("get_wave_beam", "global.wbeam = 1; global.hasWbeam = 1;");
+        gmData.Scripts.AddScript("get_spazer_beam", "global.sbeam = 1; global.hasSbeam = 1;");
+        gmData.Scripts.AddScript("get_plasma_beam", "global.pbeam = 1; global.hasPbeam = 1;");
+        gmData.Scripts.AddScript("get_morph_ball", "global.morphball = 1; global.hasMorph = 1; ");
+        gmData.Scripts.AddScript("get_small_health_drop", "global.playerhealth += argument0; if (global.playerhealth > global.maxhealth) global.playerhealth = global.maxhealth");
+        gmData.Scripts.AddScript("get_big_health_drop", "global.playerhealth += argument0; if (global.playerhealth > global.maxhealth) global.playerhealth = global.maxhealth");
+        gmData.Scripts.AddScript("get_missile_drop", "global.missiles += argument0; if (global.missiles > global.maxmissiles) global.missiles = global.maxmissiles");
+        gmData.Scripts.AddScript("get_super_missile_drop", "global.smissiles += argument0; if (global.smissiles > global.maxsmissiles) global.smissiles = global.maxsmissiles ");
+        gmData.Scripts.AddScript("get_power_bomb_drop", "global.pbombs += argument0; if (global.pbombs > global.maxpbombs) global.pbombs = global.maxpbombs");
+        gmData.Scripts.AddScript("get_flashlight", "global.flashlightLevel += argument0; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); ApplyLightPreset()");
+        gmData.Scripts.AddScript("get_blindfold", "global.flashlightLevel -= argument0; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); ApplyLightPreset()");
+        gmData.Scripts.AddScript("get_speed_booster_upgrade", "global.speedBoosterFramesReduction += argument0;");
+
         // Modify every location item, to give the wished item, spawn the wished text and the wished sprite
         foreach ((string pickupName, PickupObject pickup) in seedObject.PickupObjects)
         {
@@ -2466,129 +2557,74 @@ public class Patcher
             // First 0 is for creation event
             UndertaleCode? createCode = gmObject.Events[0][0].Actions[0].CodeId;
             createCode.AppendGMLInCode($"image_speed = {pickup.SpriteDetails.Speed}; text1 = \"{pickup.Text.Header}\"; text2 = \"{pickup.Text.Description}\";" +
-                                       $"btn1_name = \"\"; btn2_name = \"\";");
-
+                                        $"btn1_name = \"\"; btn2_name = \"\"; itemName = \"{pickup.ItemEffect.GetEnumMemberValue()}\"; itemQuantity = {pickup.Quantity};");
             // First 4 is for Collision event
             UndertaleCode? collisionCode = gmObject.Events[4][0].Actions[0].CodeId;
             string collisionCodeToBe = pickup.ItemEffect switch
             {
-                ItemEnum.EnergyTank => "scr_energytank_character_event()",
-                ItemEnum.MissileExpansion => $"if (!global.missileLauncher) {{ text1 = \"{seedObject.Patches.LockedMissileText.Header}\"; " +
-                                             $"text2 = \"{seedObject.Patches.LockedMissileText.Description}\" }} scr_missile_character_event()",
+                ItemEnum.EnergyTank => "get_etank()",
+                ItemEnum.MissileExpansion => $"get_missile_expansion({pickup.Quantity})",
                 ItemEnum.MissileLauncher => "event_inherited(); if (active) " +
-                                            "{ global.missileLauncher = 1; global.maxmissiles += global.missileLauncherExpansion; global.missiles = global.maxmissiles; }",
-                ItemEnum.SuperMissileExpansion => $"if (!global.SMissileLauncher) {{ text1 = \"{seedObject.Patches.LockedSuperText.Header}\"; " +
-                                                  $"text2 = \"{seedObject.Patches.LockedSuperText.Description}\" }} scr_supermissile_character_event()",
+                                            $"{{ get_missile_launcher({pickup.Quantity}) }}",
+                ItemEnum.SuperMissileExpansion => $"get_super_missile_expansion({pickup.Quantity})",
                 ItemEnum.SuperMissileLauncher => "event_inherited(); if (active) " +
-                                                 "{ global.SMissileLauncher = 1; global.maxsmissiles += global.SMissileLauncherExpansion; global.smissiles = global.maxsmissiles; }",
-                ItemEnum.PBombExpansion => $"if (!global.PBombLauncher) {{ text1 = \"{seedObject.Patches.LockedPBombText.Header}\"; " +
-                                           $"text2 = \"{seedObject.Patches.LockedPBombText.Description}\" }} scr_powerbomb_character_event()",
+                                                 $"{{ get_super_missile_launcher({pickup.Quantity}) }}",
+                ItemEnum.PBombExpansion => $"get_pb_expansion({pickup.Quantity})",
                 ItemEnum.PBombLauncher => "event_inherited(); if (active) " +
-                                          "{ global.PBombLauncher = 1; global.maxpbombs += global.PBombLauncherExpansion; global.pbombs = global.maxpbombs; }",
-                var x when Enum.GetName(x).StartsWith("DNA") => "event_inherited(); if (active) { global.dna++; check_areaclear(); }",
-                ItemEnum.Bombs => "btn1_name = \"Fire\"; event_inherited(); if (active) { global.bomb = 1; global.hasBombs = 1; }",
-                ItemEnum.Powergrip => "event_inherited(); if (active) { global.powergrip = 1; global.hasPowergrip = 1; }",
-                ItemEnum.Spiderball => "btn1_name = \"Aim\"; event_inherited(); if (active) { global.spiderball = 1; global.hasSpiderball = 1; }",
-                ItemEnum.Springball => "btn1_name = \"Jump\"; event_inherited(); if (active) { global.jumpball = 1; global.hasJumpball = 1; }",
-                ItemEnum.Screwattack => "event_inherited(); if (active) { global.screwattack = 1; global.hasScrewattack = 1; } with (oCharacter) sfx_stop(spinjump_sound);",
+                                          $"{{ get_pb_launcher({pickup.Quantity}) }}",
+                var x when Enum.GetName(x).StartsWith("DNA") => "event_inherited(); if (active) { get_dna() }",
+                ItemEnum.Bombs => "btn1_name = \"Fire\"; event_inherited(); if (active) { get_bombs(); }",
+                ItemEnum.Powergrip => "event_inherited(); if (active) { get_power_grip() }",
+                ItemEnum.Spiderball => "btn1_name = \"Aim\"; event_inherited(); if (active) { get_spider_ball() }",
+                ItemEnum.Springball => "btn1_name = \"Jump\"; event_inherited(); if (active) { get_spring_ball() }",
+                ItemEnum.Screwattack => "event_inherited(); if (active) { get_screw_attack() } ",
                 ItemEnum.Varia => """
                                       event_inherited()
-                                      global.SuitChange = !global.skipItemFanfare;
-                                      // If any Metroid exists, force suit cutscene to be off
-                                      if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
-                                          global.SuitChange = 0;
-                                      if collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true)
-                                          global.SuitChange = 0;
-                                      if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
-                                          global.SuitChange = 0;
-                                      global.SuitChangeX = x;
-                                      global.SuitChangeY = y;
-                                      global.SuitChangeGravity = 0;
                                       if (active)
                                       {
-                                          global.hasVaria = 1;
-                                          with (oCharacter)
-                                              alarm[1] = 1;
+                                          get_varia()
                                       }
                                   """,
-                ItemEnum.Spacejump => "event_inherited(); if (active) { global.spacejump = 1; global.hasSpacejump = 1; } with (oCharacter) sfx_stop(spinjump_sound);",
-                ItemEnum.Speedbooster => "event_inherited(); if (active) { global.speedbooster = 1; global.hasSpeedbooster = 1; }",
-                ItemEnum.Hijump => "event_inherited(); if (active) { global.hijump = 1; global.hasHijump = 1; }",
+                ItemEnum.Spacejump => "event_inherited(); if (active) { get_space_jump()  } ",
+                ItemEnum.Speedbooster => "event_inherited(); if (active) { get_speed_booster() }",
+                ItemEnum.Hijump => "event_inherited(); if (active) { get_hijump() }",
                 ItemEnum.ProgressiveJump =>
-                    "event_inherited(); if (active) { if (global.hasSpacejump) exit; else if (global.hasHijump) { global.spacejump = 1; global.hasSpacejump = 1; with (oCharacter) sfx_stop(spinjump_sound); } else { global.hijump = 1; global.hasHijump = 1; } }",
+                    "event_inherited(); if (active) { get_progressive_jump() }",
                 ItemEnum.Gravity => """
                                         event_inherited();
-                                        global.SuitChange = !global.skipItemFanfare;
-                                        // If any Metroid exists, force suit cutscene to be off
-                                        if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
-                                            global.SuitChange = 0;
-                                        if (collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true))
-                                            global.SuitChange = 0;
-                                        if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
-                                            global.SuitChange = 0;
-                                        global.SuitChangeX = x;
-                                        global.SuitChangeY = y;
-                                        global.SuitChangeGravity = 1;
                                         if (active)
                                         {
-                                            global.hasGravity = 1;
-                                            with (oCharacter)
-                                                alarm[4] = 1;
+                                            get_gravity()
                                         }
                                     """,
                 ItemEnum.ProgressiveSuit => """
                                                 event_inherited();
-                                                global.SuitChange = !global.skipItemFanfare;
-                                                // If any Metroid exists, force suit cutscene to be off
-                                                if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
-                                                    global.SuitChange = 0;
-                                                if (collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true))
-                                                    global.SuitChange = 0;
-                                                if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
-                                                    global.SuitChange = 0;
-                                                global.SuitChangeX = x;
-                                                global.SuitChangeY = y;
                                                 if (active)
                                                 {
-                                                    if (global.hasGravity) exit
-                                                    else if (global.hasVaria)
-                                                    {
-                                                        global.hasGravity = 1;
-                                                        global.SuitChangeGravity = 1;
-                                                    }
-                                                    else
-                                                    {
-                                                        global.hasVaria = 1;
-                                                        global.SuitChangeGravity = 0;
-                                                    }
-                                                    with (oCharacter)
-                                                        if (global.hasGravity)
-                                                            alarm[4] = 1;
-                                                        else if (global.hasVaria)
-                                                            alarm[1] = 1;
+                                                    get_progressive_suit()
                                                 }
                                             """,
-                ItemEnum.Charge => "btn1_name = \"Fire\"; event_inherited(); if (active) { global.cbeam = 1; global.hasCbeam = 1; }",
-                ItemEnum.Ice => "event_inherited(); if (active) { global.ibeam = 1; global.hasIbeam = 1; }",
-                ItemEnum.Wave => "event_inherited(); if (active) { global.wbeam = 1; global.hasWbeam = 1; }",
-                ItemEnum.Spazer => "event_inherited(); if (active) { global.sbeam = 1; global.hasSbeam = 1; }",
-                ItemEnum.Plasma => "event_inherited(); if (active) { global.pbeam = 1; global.hasPbeam = 1; }",
-                ItemEnum.Morphball => "event_inherited(); if (active) { global.morphball = 1; global.hasMorph = 1; }",
+                ItemEnum.Charge => "btn1_name = \"Fire\"; event_inherited(); if (active) { get_charge_beam() }",
+                ItemEnum.Ice => "event_inherited(); if (active) { get_ice_beam() }",
+                ItemEnum.Wave => "event_inherited(); if (active) { get_wave_beam() }",
+                ItemEnum.Spazer => "event_inherited(); if (active) { get_spazer_beam() }",
+                ItemEnum.Plasma => "event_inherited(); if (active) { get_plasma_beam() }",
+                ItemEnum.Morphball => "event_inherited(); if (active) { get_morph_ball() }",
                 ItemEnum.SmallHealthDrop =>
-                    $"event_inherited(); if (active) {{ global.playerhealth += {pickup.Quantity}; if (global.playerhealth > global.maxhealth) global.playerhealth = global.maxhealth }}",
+                    $"event_inherited(); if (active) {{ get_small_health_drop({pickup.Quantity}); }}",
                 ItemEnum.BigHealthDrop =>
-                    $"event_inherited(); if (active) {{ global.playerhealth += {pickup.Quantity}; if (global.playerhealth > global.maxhealth) global.playerhealth = global.maxhealth }}",
+                    $"event_inherited(); if (active) {{ get_big_health_drop({pickup.Quantity}); }}",
                 ItemEnum.MissileDrop =>
-                    $"event_inherited(); if (active) {{ global.missiles += {pickup.Quantity}; if (global.missiles > global.maxmissiles) global.missiles = global.maxmissiles }}",
+                    $"event_inherited(); if (active) {{ get_missile_drop({pickup.Quantity}); }}",
                 ItemEnum.SuperMissileDrop =>
-                    $"event_inherited(); if (active) {{ global.smissiles += {pickup.Quantity}; if (global.smissiles > global.maxsmissiles) global.smissiles = global.maxsmissiles }}",
+                    $"event_inherited(); if (active) {{ get_super_missile_drop({pickup.Quantity}); }}",
                 ItemEnum.PBombDrop =>
-                    $"event_inherited(); if (active) {{ global.pbombs += {pickup.Quantity}; if (global.pbombs > global.maxpbombs) global.pbombs = global.maxpbombs }}",
+                    $"event_inherited(); if (active) {{ get_power_bomb_drop({pickup.Quantity}); }}",
                 ItemEnum.Flashlight =>
-                    $"event_inherited(); if (active) {{ global.flashlightLevel += {pickup.Quantity}; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); ApplyLightPreset() }}",
+                    $"event_inherited(); if (active) {{ get_flashlight({pickup.Quantity}); }}",
                 ItemEnum.Blindfold =>
-                    $"event_inherited(); if (active) {{ global.flashlightLevel -= {pickup.Quantity}; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); ApplyLightPreset() }}",
-                ItemEnum.SpeedBoosterUpgrade => $"event_inherited(); if (active) {{ global.speedBoosterFramesReduction += {pickup.Quantity}; }}",
+                    $"event_inherited(); if (active) {{ get_blindfold({pickup.Quantity}); }}",
+                ItemEnum.SpeedBoosterUpgrade => $"event_inherited(); if (active) {{ get_speed_booster_upgrade({pickup.Quantity}); }}",
                 ItemEnum.Nothing => "event_inherited();",
                 _ => throw new NotSupportedException("Unsupported item! " + pickup.ItemEffect)
             };
@@ -2602,7 +2638,7 @@ public class Patcher
                                                    if (global.difficulty == 2)
                                                        global.maxmissiles += 2
                                                """, $"""
-                                                         global.maxmissiles += {seedObject.PickupObjects.FirstOrDefault(p => p.Value.ItemEffect == ItemEnum.MissileExpansion).Value?.Quantity ?? 0}
+                                                         global.maxmissiles += argument0
                                                      """);
 
         superMissileCharacterEvent.ReplaceGMLInCode("""
@@ -2611,7 +2647,7 @@ public class Patcher
                                                         if (global.difficulty == 2)
                                                             global.maxsmissiles += 1
                                                     """, $"""
-                                                              global.maxsmissiles += {seedObject.PickupObjects.FirstOrDefault(p => p.Value.ItemEffect == ItemEnum.SuperMissileExpansion).Value?.Quantity ?? 0}
+                                                              global.maxsmissiles += argument0
                                                           """);
 
         pBombCharacterEvent.ReplaceGMLInCode("""
@@ -2620,28 +2656,8 @@ public class Patcher
                                                  if (global.difficulty == 2)
                                                      global.maxpbombs += 1
                                              """, $"""
-                                                       global.maxpbombs += {seedObject.PickupObjects.FirstOrDefault(p => p.Value.ItemEffect == ItemEnum.PBombExpansion).Value?.Quantity ?? 0}
+                                                       global.maxpbombs += argument0
                                                    """);
-
-
-        // Set how much items the launchers give
-        if (seedObject.PickupObjects.Any(p => p.Value.ItemEffect == ItemEnum.MissileLauncher))
-        {
-            characterVarsCode.ReplaceGMLInCode("global.missileLauncherExpansion = 30",
-                $"global.missileLauncherExpansion = {seedObject.PickupObjects.First(p => p.Value.ItemEffect == ItemEnum.MissileLauncher).Value.Quantity};");
-        }
-
-        if (seedObject.PickupObjects.Any(p => p.Value.ItemEffect == ItemEnum.SuperMissileLauncher))
-        {
-            characterVarsCode.ReplaceGMLInCode("global.SMissileLauncherExpansion = 2",
-                $"global.SMissileLauncherExpansion = {seedObject.PickupObjects.First(p => p.Value.ItemEffect == ItemEnum.SuperMissileLauncher).Value.Quantity};");
-        }
-
-        if (seedObject.PickupObjects.Any(p => p.Value.ItemEffect == ItemEnum.PBombLauncher))
-        {
-            characterVarsCode.ReplaceGMLInCode("global.PBombLauncherExpansion = 2",
-                $"global.PBombLauncherExpansion = {seedObject.PickupObjects.First(p => p.Value.ItemEffect == ItemEnum.PBombLauncher).Value.Quantity};");
-        }
 
 
         // Also change how gui health is drawn
@@ -3033,6 +3049,16 @@ public class Patcher
         // Removes cutscenes for type 1's
         gmData.Code.ByName("gml_Object_oItem_Other_10").ReplaceGMLInCode("display_itemmsg", "if (!global.skipItemFanfare) display_itemmsg");
 
+        // Add DNA check to Baby trigger
+        gmData.Code.ByName("gml_Object_oHatchlingTrigger_Collision_267").PrependGMLInCode(
+            """
+            if (global.dna < 46)
+            {
+                popup_text("Collect all the DNA to hatch the Baby")
+                instance_destroy()
+                exit
+            }
+            """);
 
         // Patch to add room name display near health
         DisplayRoomNameOnHUD.Apply(gmData, decompileContext, seedObject);
@@ -3086,6 +3112,511 @@ public class Patcher
 
 
         // Multiworld stuff
+        // Needed variables
+        gmData.Scripts.AddScript("mw_debug", """
+        var totalString = string(current_hour) + ":" + string(current_minute) + "." + string(current_second) + " - " + argument0
+        show_debug_message(totalString);
+        var f = file_text_open_append(working_directory + "/mw-debug-" + oControl.year + oControl.month + oControl.day + oControl.hour + oControl.minute + ".txt")
+        file_text_write_string(f, totalString)
+        file_text_writeln(f)
+        file_text_close(f)
+        """);
+
+        gmData.Sprites.Add(new UndertaleSprite
+        {
+            Name = gmData.Strings.MakeString("sDisconnected"), Height = 8, Width = 8, MarginRight = 7, MarginBottom = 7, OriginX = 0, OriginY = 8,
+            Textures = GetTexturePageItemsForSpriteName("sDisconnected")
+        });
+
+        gmData.Code.ByName("gml_Object_oControl_Create_0").PrependGMLInCode($"""
+        year = string(current_year)
+        month = string(current_month)
+        day = string(current_day)
+        hour = string(current_hour)
+        minute = string(current_minute)
+        PACKET_HANDSHAKE=1
+        PACKET_UUID=2
+        PACKET_LOG=3
+        PACKET_KEEP_ALIVE=4
+        PACKET_NEW_INVENTORY=5
+        PACKET_NEW_LOCATION=6
+        PACKET_RECEIVED_PICKUPS=7
+        PACKET_GAME_STATE=8
+        PACKET_DISPLAY_MESSAGE=9
+        PACKET_MALFORMED=10
+        socketServer = network_create_server_raw(0, 2016, 1)
+        if (socketServer < 0) mw_debug("The port 2016 was not able to be opened!")
+        packetNumber = 0
+        networkProtocolVersion = 1
+        hasConnectedAtLeastOnce = false
+        hasConnectedAlpha = 1
+        hasConnectedAlphaDirection = 0
+        currentGameUuid = "{seedObject.Identifier.WorldUUID}"
+        clientState = 0
+        CLIENT_DISCONNECTED = 0
+        CLIENT_HANDSHAKE_CONNECTION = 1
+        CLIENT_FULLY_CONNECTED = 2
+        clientSocket = 0
+        messageDisplay = ""
+        messageDisplayTimer = 0
+        MESSAGE_DISPLAY_TIMER_INITIAL = 360
+        fetchPickupTimer = -1
+        PICKUP_TIMER_INITIAL = 180
+        global.lastOffworldNumber = 0
+        global.collectedIndices = "locations:"
+        global.collectedItems = "items:"
+        tempTimer = 0
+        mw_debug("Multiworld variables initialized");
+        """);
+
+        // Also add the save items to character vars
+        characterVarsCode.PrependGMLInCode("""
+        global.lastOffworldNumber = 0
+        global.collectedIndices = "locations:"
+        global.collectedItems = "items:"
+        """);
+
+        // Add script to send location and inventory info
+        gmData.Scripts.AddScript("send_location_and_inventory_packet", """
+        if (oControl.socketServer >= 0 && oControl.clientState >= oControl.CLIENT_FULLY_CONNECTED)
+        {
+            mw_debug("Sending location+inventory packet:")
+            mw_debug("Current locations: " + global.collectedIndices)
+            mw_debug("Current inventory: " + global.collectedItems)
+            var collectedLocation = buffer_create(512, buffer_grow, 1)
+            buffer_seek(collectedLocation, buffer_seek_start, 0)
+            buffer_write(collectedLocation, buffer_u8, oControl.PACKET_NEW_LOCATION)
+            var currentPos = buffer_tell(collectedLocation)
+            buffer_write(collectedLocation, buffer_text, global.collectedIndices)
+            var length = (buffer_tell(collectedLocation) - currentPos)
+            buffer_seek(collectedLocation, buffer_seek_start, currentPos)
+            buffer_write(collectedLocation, buffer_u16, length)
+            buffer_write(collectedLocation, buffer_text, global.collectedIndices)
+            network_send_raw(oControl.clientSocket, collectedLocation, buffer_get_size(collectedLocation))
+            mw_debug("Sent location packet")
+            buffer_delete(collectedLocation)
+            var collectedItem = buffer_create(512, buffer_grow, 1)
+            buffer_seek(collectedItem, buffer_seek_start, 0)
+            buffer_write(collectedItem, buffer_u8, oControl.PACKET_NEW_INVENTORY)
+            currentPos = buffer_tell(collectedItem)
+            buffer_write(collectedItem, buffer_text, global.collectedItems)
+            length = (buffer_tell(collectedItem) - currentPos)
+            buffer_seek(collectedItem, buffer_seek_start, currentPos)
+            buffer_write(collectedItem, buffer_u16, length)
+            buffer_write(collectedItem, buffer_text, global.collectedItems)
+            network_send_raw(oControl.clientSocket, collectedItem, buffer_get_size(collectedItem))
+            mw_debug("Sent inventory packet")
+            buffer_delete(collectedItem)
+        }
+        """);
+
+
+        // Send collected item and location when collecting items
+        gmData.Code.ByName("gml_Object_oItem_Other_10").ReplaceGMLInCode("instance_destroy()", """
+        global.collectedIndices += (string(itemid) + ",")
+        global.collectedItems += (((string(itemName) + "|") + string(itemQuantity)) + ",")
+        mw_debug("Local item was collected: location " + string(itemid) + " , name " + string(itemName) + " quantity " + string(itemQuantity))
+        send_location_and_inventory_packet();
+        instance_destroy();
+        """);
+
+        // Send collected items and locations when loading saves
+        gmData.Code.ByName("gml_Object_oLoadGame_Other_10").AppendGMLInCode("""
+        mw_debug("Some save got loaded")
+        send_room_info_packet(global.start_room);
+        send_location_and_inventory_packet();
+        """);
+
+        // Send room info when transition rooms
+        gmData.Scripts.AddScript("send_room_info_packet", """
+        var rm = argument0;
+        if (rm == undefined)
+            rm = room
+        if (oControl.socketServer >= 0 && oControl.clientState >= oControl.CLIENT_FULLY_CONNECTED)
+        {
+            mw_debug("Sending room info packet, with room " + string(room_get_name(rm)))
+            var roomName = buffer_create(512, buffer_grow, 1)
+            buffer_seek(roomName, buffer_seek_start, 0)
+            buffer_write(roomName, buffer_u8, oControl.PACKET_GAME_STATE)
+            var currentPos = buffer_tell(roomName)
+            buffer_write(roomName, buffer_text, string(room_get_name(rm)))
+            var length = (buffer_tell(roomName) - currentPos)
+            buffer_seek(roomName, buffer_seek_start, currentPos)
+            buffer_write(roomName, buffer_u16, length)
+            buffer_write(roomName, buffer_text, string(room_get_name(rm)))
+            network_send_raw(oControl.clientSocket, roomName, buffer_get_size(roomName))
+            mw_debug("Sent room packet")
+            buffer_delete(roomName)
+        }
+        """);
+
+        gmData.Code.ByName("gml_Object_oControl_Other_4").AppendGMLInCode("""
+        mw_debug("Player has changed their room")
+        send_room_info_packet();
+        """);
+
+        // Periodically send what our last received offworld item was
+        gmData.Code.ByName("gml_Object_oControl_Step_0").AppendGMLInCode("""
+        if (socketServer >= 0 && clientState >= oControl.CLIENT_FULLY_CONNECTED && fetchPickupTimer == 0)
+        {
+            mw_debug("Sending PickupTimer packet. Our current value: " + string(global.lastOffworldNumber));
+            fetchPickupTimer = PICKUP_TIMER_INITIAL
+            var pickupBuffer = buffer_create(512, buffer_grow, 1)
+            buffer_seek(pickupBuffer, buffer_seek_start, 0)
+            buffer_write(pickupBuffer, buffer_u8, PACKET_RECEIVED_PICKUPS)
+            var currentPos = buffer_tell(pickupBuffer)
+            buffer_write(pickupBuffer, buffer_text, string(global.lastOffworldNumber))
+            var length = (buffer_tell(pickupBuffer) - currentPos)
+            buffer_seek(pickupBuffer, buffer_seek_start, currentPos)
+            buffer_write(pickupBuffer, buffer_u16,length)
+            buffer_write(pickupBuffer, buffer_text, string(global.lastOffworldNumber))
+            network_send_raw(clientSocket, pickupBuffer, buffer_get_size(pickupBuffer))
+            mw_debug("send receive pickup packet")
+            buffer_delete(pickupBuffer)
+        }
+        fetchPickupTimer--
+        tempTimer++
+        if (tempTimer > 9999) tempTimer = 0
+        """);
+
+        // Show MW messages + cant open port message
+        gmData.Code.ByName("gml_Script_draw_gui").AppendGMLInCode("""
+                                             if (oControl.socketServer < 0)
+                                             {
+                                                 draw_set_font(global.fontGUI2)
+                                                 draw_set_halign(fa_left)
+                                                 draw_cool_text(0, 50, "Could not open Port!#Please try reopening#the game after 2min.", c_black, c_white, c_white, 1)
+                                             }
+                                             if (oControl.hasConnectedAtLeastOnce && (oControl.socketServer >= 0 && clientState == oControl.CLIENT_DISCONNECTED))
+                                             {
+                                                if (oControl.tempTimer % 60 == 0)
+                                                    mw_debug("Showing 'game is disconnected' message.")
+                                                draw_set_font(global.fontGUI2)
+                                                draw_set_halign(fa_left)
+                                                draw_sprite_ext(sDisconnected, 0, 5, 61, 1, 1, 0, c_white, oControl.hasConnectedAlpha);
+                                                if (oControl.hasConnectedAlpha <= 0)
+                                                    oControl.hasConnectedAlphaDirection = 0
+                                                else if (oControl.hasConnectedAlpha >= 1.4)
+                                                    oControl.hasConnectedAlphaDirection = 1
+                                                if (oControl.hasConnectedAlphaDirection == 1)
+                                                    oControl.hasConnectedAlpha -= 0.025
+                                                else if (oControl.hasConnectedAlphaDirection == 0)
+                                                    oControl.hasConnectedAlpha += 0.025
+                                                draw_cool_text(15, 50, "Disconnected!", c_black, c_white, c_white, 1)
+                                             }
+                                             if (global.ingame && oControl.messageDisplay != "" && oControl.messageDisplayTimer > 0)
+                                             {
+                                                 if (oControl.tempTimer % 60 == 0)
+                                                    mw_debug("Showing message display; message: " + string(oControl.messageDisplay) + " timer: " + string(oControl.messageDisplayTimer))
+                                                 draw_set_font(global.fontGUI2)
+                                                 draw_set_halign(fa_center)
+                                                 draw_cool_text(160 + (widescreen_space / 2), 40, oControl.messageDisplay, c_black, c_white, c_white, 1)
+                                                 oControl.messageDisplayTimer--
+                                                 if (oControl.messageDisplayTimer <= 0)
+                                                 {
+                                                     oControl.messageDisplayTimer = 0
+                                                     messageDisplay = ""
+                                                     mw_debug("Timer ran out, resetting both display and timer to empty values")
+                                                 }
+                                                 draw_set_halign(fa_left)
+                                                 draw_set_font(global.fontMenuTiny)
+                                             }
+                                             """);
+
+        // Received network packet event.
+        var oControlNetworkReceived = new UndertaleCode() { Name = gmData.Strings.MakeString("gml_Object_oControl_Other_68") };
+        UndertaleCodeLocals locals = new UndertaleCodeLocals();
+        locals.Name = oControlNetworkReceived.Name;
+        UndertaleCodeLocals.LocalVar argsLocal = new UndertaleCodeLocals.LocalVar();
+        argsLocal.Name = gmData.Strings.MakeString("arguments");
+        argsLocal.Index = 0;
+        locals.Locals.Add(argsLocal);
+        oControlNetworkReceived.LocalsCount = 1;
+        gmData.CodeLocals.Add(locals);
+        oControlNetworkReceived.SubstituteGMLCode($$"""
+        mw_debug("Async Networking event entered")
+        var type_event, _buffer, bufferSize, msgid, handshake, socket, malformed, protocolVer, length, currentPos, i, upperLimit;
+        type_event = ds_map_find_value(async_load, "type")
+        switch type_event
+        {
+            case 1:
+                mw_debug("The client has done the initial connection to our socket")
+                clientSocket = ds_map_find_value(async_load, "socket")
+                break
+            case 2:
+                mw_debug("The client disconnected from the socket, resetting values")
+                clientSocket = 0
+                clientState = CLIENT_DISCONNECTED
+                packetNumber = 0
+                fetchPickupsTimer = -1
+                break
+            case 3:
+                mw_debug("Client send us incoming data")
+                socket = clientSocket
+                if (socket == undefined || socket == 0)
+                    exit
+                mw_debug("Client socket is valid")
+                mw_debug(("Socket: " + string(socket)))
+                _buffer = ds_map_find_value(async_load, "buffer")
+                if (_buffer == undefined)
+                    exit
+                mw_debug("Confirmed for Client to send us valid data")
+                mw_debug(("Buffer id: " + string(_buffer)))
+                bufferSize = buffer_get_size(_buffer)
+                mw_debug("Buffer size: " + string(bufferSize))
+                msgid = buffer_read(_buffer, buffer_u8)
+                mw_debug(("Message ID of the packet: " + string(msgid)))
+                switch msgid
+                {
+                    case PACKET_HANDSHAKE:
+                        mw_debug("Entered Handshake handling.")
+                        mw_debug(("Current client state: " + string(clientState)))
+                        if (clientState == CLIENT_DISCONNECTED)
+                        {
+                            mw_debug("Client is not connected, initiating procedure")
+                            clientState = CLIENT_HANDSHAKE_CONNECTION
+                            mw_debug("Client has been internally set to initial connection")
+                            var handshake = buffer_create(2, buffer_grow, 1)
+                            buffer_seek(handshake, buffer_seek_start, 0)
+                            buffer_write(handshake, buffer_u8, PACKET_HANDSHAKE)
+                            buffer_write(handshake, buffer_u8, string(packetNumber))
+                            network_send_raw(socket, handshake, buffer_get_size(handshake))
+                            buffer_delete(handshake)
+                            packetNumber = ((packetNumber + 1) % 256)
+                            mw_debug("Internal packet number set to " + string(packetNumber))
+                        }
+                        else mw_debug("Client tried to initiate handshake while already connected")
+                        break
+                    case PACKET_UUID:
+                        mw_debug("Client requested UUID")
+                        if (clientState < CLIENT_HANDSHAKE_CONNECTION)
+                        {
+                            mw_debug("Client tried to request UUID while not being connected yet.")
+                            exit
+                        }
+                        mw_debug("Client passed the handshake check")
+                        protocolVer = buffer_create(1024, buffer_grow, 1)
+                        buffer_seek(protocolVer, buffer_seek_start, 0)
+                        buffer_write(protocolVer, buffer_u8, PACKET_UUID)
+                        buffer_write(protocolVer, buffer_u8, string(packetNumber))
+                        currentPos = buffer_tell(protocolVer)
+                        buffer_write(protocolVer, buffer_text, string(networkProtocolVersion) + "," + string(currentGameUuid))
+                        length = (buffer_tell(protocolVer) - currentPos)
+                        buffer_seek(protocolVer, buffer_seek_start, currentPos)
+                        buffer_write(protocolVer, buffer_u16, length)
+                        buffer_write(protocolVer, buffer_text, string(networkProtocolVersion) + "," + string(currentGameUuid))
+                        network_send_raw(socket, protocolVer, buffer_get_size(protocolVer))
+                        mw_debug("Sent protocol packet; api version " + string(networkProtocolVersion) + " uuid " + string(currentGameUuid))
+                        buffer_delete(protocolVer)
+                        packetNumber = ((packetNumber + 1) % 256)
+                        clientState = CLIENT_FULLY_CONNECTED
+                        hasConnectedAtLeastOnce = true
+                        mw_debug("Client has been connected at least once set, Client is fully connected now. Packet number: " + string(packetNumber))
+                        fetchPickupTimer = PICKUP_TIMER_INITIAL
+                        mw_debug("Pickup timer has been set to the initial timer")
+                        send_room_info_packet();
+                        send_location_and_inventory_packet();
+                        break
+                    case PACKET_DISPLAY_MESSAGE:
+                        mw_debug("Client send us a message to show")
+                        var tempMessage = buffer_read(_buffer, buffer_string)
+                        var upperLimit = 45
+                        if widescreen
+                            upperLimit = 50
+                        if (string_length(tempMessage) > upperLimit)
+                            tempMessage = string_insert("-#", tempMessage, upperLimit)
+                        messageDisplay = tempMessage
+                        messageDisplayTimer = MESSAGE_DISPLAY_TIMER_INITIAL
+                        mw_debug("Message that client wants us to show: " + messageDisplay)
+                        break
+                    case PACKET_RECEIVED_PICKUPS:
+                        mw_debug("Client send us pickups that we should receive")
+                        var message = buffer_read(_buffer, buffer_string)
+                        mw_debug("Pickups are in the following message: " + string(message))
+                        var splitBy = "|"
+                        var splitted;
+                        var i = 0
+                        var total = string_count(splitBy, message)
+                        while (i<=total)
+                        {
+                            var limit = string_length(message)+1
+                            if (string_count(splitBy, message) > 0)
+                                limit = string_pos("|", message)
+                            var element = string_copy(message, 1, limit-1)
+                            splitted[i] = element
+                            message = string_copy(message, limit+1, string_length(message)-limit)
+                            i++
+                        }
+
+                        var provider = splitted[0]
+                        var name = splitted[1]
+                        var model = splitted[2]
+                        var quantity = real(splitted[3])
+                        var remoteItemNumber = real(splitted[4])
+                        mw_debug("prov:" + provider + " name:" + name + " model: " + model + " quant: " + string(quantity) + " remote num: " + string(remoteItemNumber))
+                        if (remoteItemNumber <= global.lastOffworldNumber)
+                        {
+                            mw_debug("We have already received this item. Bailing out. Our current item is " + string(global.lastOffworldNumber))
+                            break;
+                        }
+                        var knownItem = true
+                        active = true       // workaround for some scripts
+                        switch (name)
+                        {
+                            case "{{ItemEnum.EnergyTank.GetEnumMemberValue()}}":
+                                get_etank()
+                                break
+                            case "{{ItemEnum.MissileExpansion.GetEnumMemberValue()}}":
+                                get_missile_expansion(quantity)
+                                break
+                            case "{{ItemEnum.MissileLauncher.GetEnumMemberValue()}}":
+                                get_missile_launcher(quantity)
+                                break
+                            case "{{ItemEnum.SuperMissileExpansion.GetEnumMemberValue()}}":
+                                get_super_missile_expansion(quantity)
+                                break
+                            case "{{ItemEnum.SuperMissileLauncher.GetEnumMemberValue()}}":
+                                get_super_missile_launcher(quantity)
+                                break
+                            case "{{ItemEnum.PBombExpansion.GetEnumMemberValue()}}":
+                                get_pb_expansion(quantity)
+                                break
+                            case "{{ItemEnum.PBombLauncher.GetEnumMemberValue()}}":
+                                get_pb_launcher(quantity)
+                                break
+                            case "{{ItemEnum.Bombs.GetEnumMemberValue()}}":
+                                get_bombs()
+                                break
+                            case "{{ItemEnum.Powergrip.GetEnumMemberValue()}}":
+                                get_power_grip()
+                                break
+                            case "{{ItemEnum.Spiderball.GetEnumMemberValue()}}":
+                                get_spider_ball()
+                                break
+                            case "{{ItemEnum.Springball.GetEnumMemberValue()}}":
+                                get_spring_ball()
+                                break
+                            case "{{ItemEnum.Screwattack.GetEnumMemberValue()}}":
+                                get_screw_attack()
+                                break
+                            case "{{ItemEnum.Varia.GetEnumMemberValue()}}":
+                                get_varia()
+                                break
+                            case "{{ItemEnum.Spacejump.GetEnumMemberValue()}}":
+                                get_space_jump()
+                                break
+                            case "{{ItemEnum.Speedbooster.GetEnumMemberValue()}}":
+                                get_speed_booster()
+                                break
+                            case "{{ItemEnum.Hijump.GetEnumMemberValue()}}":
+                                get_hijump()
+                                break
+                            case "{{ItemEnum.ProgressiveJump.GetEnumMemberValue()}}":
+                                get_progressive_jump()
+                                break
+                            case "{{ItemEnum.Gravity.GetEnumMemberValue()}}":
+                                get_gravity()
+                                break
+                            case "{{ItemEnum.ProgressiveSuit.GetEnumMemberValue()}}":
+                                get_progressive_suit()
+                                break
+                            case "{{ItemEnum.Charge.GetEnumMemberValue()}}":
+                                get_charge_beam()
+                                break
+                            case "{{ItemEnum.Ice.GetEnumMemberValue()}}":
+                                get_ice_beam()
+                                break
+                            case "{{ItemEnum.Wave.GetEnumMemberValue()}}":
+                                get_wave_beam()
+                                break
+                            case "{{ItemEnum.Spazer.GetEnumMemberValue()}}":
+                                get_spazer_beam()
+                                break
+                            case "{{ItemEnum.Plasma.GetEnumMemberValue()}}":
+                                get_plasma_beam()
+                                break
+                            case "{{ItemEnum.Morphball.GetEnumMemberValue()}}":
+                                get_morph_ball()
+                                break
+                            case "{{ItemEnum.SmallHealthDrop.GetEnumMemberValue()}}":
+                                get_small_health_drop(quantity);
+                                break
+                            case "{{ItemEnum.BigHealthDrop.GetEnumMemberValue()}}":
+                                get_big_health_drop(quantity)
+                                break
+                            case "{{ItemEnum.MissileDrop.GetEnumMemberValue()}}":
+                                get_missile_drop(quantity)
+                                break
+                            case "{{ItemEnum.SuperMissileDrop.GetEnumMemberValue()}}":
+                                get_super_missile_drop(quantity);
+                                break
+                            case "{{ItemEnum.PBombDrop.GetEnumMemberValue()}}":
+                                get_power_bomb_drop(quantity)
+                                break
+                            case "{{ItemEnum.Flashlight.GetEnumMemberValue()}}":
+                                get_flashlight(quantity);
+                                break
+                            case "{{ItemEnum.Blindfold.GetEnumMemberValue()}}":
+                                get_blindfold(quantity);
+                                break
+                            case "{{ItemEnum.SpeedBoosterUpgrade.GetEnumMemberValue()}}":
+                                get_speed_booster_upgrade(quantity)
+                                break
+                            default:
+                                if (string_count("Metroid DNA", name) > 0)
+                                {
+                                    get_dna()
+                                    break;
+                                }
+                                mw_debug("Have gotten unknown Item.")
+                                knownItem = false
+                                break;
+                        }
+                        var tempMessage = "Received " + name + " from " + provider
+                        if (!knownItem)
+                            tempMessage = "Unknown item from " + provider + "! Please report this!!!"
+                        var upperLimit = 45
+                        if widescreen
+                            upperLimit = 50
+                        if (string_length(tempMessage) > upperLimit)
+                            tempMessage = string_insert("-#", tempMessage, upperLimit)
+                        messageDisplay = tempMessage
+                        messageDisplayTimer = MESSAGE_DISPLAY_TIMER_INITIAL
+                        mw_debug("Message that we'll be showing: " + messageDisplay)
+                        if (knownItem)
+                        {
+                            mw_debug("Item that we received was known to us. Attempting to increase inventory; current: " + string(global.collectedItems))
+                            global.collectedItems += (name + "|" + string(quantity) + ",")
+                            global.lastOffworldNumber = remoteItemNumber
+                            mw_debug("Inventory and lastoffworld set. offworld: " + string(global.lastOffworldNumber) + " inventory: " + string(global.collectedItems))
+                        }
+                        send_location_and_inventory_packet()
+                        active = false
+                        mw_debug("End of Pickup receive handling.")
+                        break;
+                }
+                break
+            default:
+                mw_debug("Unknown message id. Sending malformed packet as response")
+                malformed = buffer_create(1024, buffer_grow, 1)
+                buffer_seek(malformed, buffer_seek_start, 0)
+                buffer_write(malformed, buffer_u8, PACKET_MALFORMED)
+                buffer_write(malformed, buffer_u8, 0)
+                network_send_raw(socket, malformed, buffer_get_size(malformed))
+                buffer_delete(malformed)
+                break
+        }
+        mw_debug("Leaving async networking event")
+        """);
+        gmData.Code.Add(oControlNetworkReceived);
+        var oControlCollisionList = gmData.GameObjects.ByName("oControl").Events[7];
+        var oControlAction = new UndertaleGameObject.EventAction();
+        oControlAction.CodeId = oControlNetworkReceived;
+        var oControlEvent = new UndertaleGameObject.Event();
+        oControlEvent.EventSubtype = 68;
+        oControlEvent.Actions.Add(oControlAction);
+        oControlCollisionList.Add(oControlEvent);
+
 
         // Write back to disk
         using (FileStream fs = new FileInfo(outputAm2rPath).OpenWrite())
