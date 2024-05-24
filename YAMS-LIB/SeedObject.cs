@@ -302,6 +302,10 @@ public class GamePatches
     [JsonInclude]
     [JsonPropertyName("locked_pb_text")]
     public TextDetails LockedPBombText;
+
+    [JsonInclude]
+    [JsonPropertyName("required_amount_of_dna")]
+    public int RequiredDNAmount = 46;
 }
 
 public class ConfigurationIdentifier
@@ -438,11 +442,11 @@ public enum ItemEnum
     [EnumMember(Value = "Metroid DNA 46")]
     DNA46,
 
-    [EnumMember(Value = "Missile Expansion")]
+    [EnumMember(Value = "Missile Tank")]
     MissileExpansion,
-    [EnumMember(Value = "Super Missile Expansion")]
+    [EnumMember(Value = "Super Missile Tank")]
     SuperMissileExpansion,
-    [EnumMember(Value = "Power Bomb Expansion")]
+    [EnumMember(Value = "Power Bomb Tank")]
     PBombExpansion,
     [EnumMember(Value = "Energy Tank")]
     EnergyTank,
@@ -507,6 +511,7 @@ public enum ItemEnum
     Morphball,
     [EnumMember(Value = "Nothing")]
     Nothing,
+
     [EnumMember(Value = "Small Health Drop")]
     SmallHealthDrop,
     [EnumMember(Value = "Big Health Drop")]
@@ -523,6 +528,12 @@ public enum ItemEnum
     Blindfold,
     [EnumMember(Value = "Speed Booster Upgrade")]
     SpeedBoosterUpgrade,
+    [EnumMember(Value = "Walljump")]
+    Walljump,
+    [EnumMember(Value = "Infinite Bomb Jump")]
+    InfiniteBombJump,
+    [EnumMember(Value = "Long Beam")]
+    LongBeam,
 }
 
 public class PickupObject

@@ -3,9 +3,153 @@ All notable changes to this project will be documented in this file.
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
-## [1.2.1] - 2021-01-??
+## [2.2.0] - 2024-05-19
+
+### Added
+- Added Long Beam as an Item
+- Added Infinite Bomb Jumping as an Item
+- Added Walljumping as an Item
+- Make it possible to use colored text for logbooks.
+
 ### Changed
-- Rename `sItemDarkBeam` to `sItemDarkBeamEchoes` and `sItemArtifact` to `sItemArtifactPrime`
+- Doors that have been shuffled over open transitions look slightly nicer.
+- The sprites for the EMP doors changed to be more distinct.
+
+### Fixed
+- Hideout Alpha Nest, Waterfalls entryway and Skreek Street look less weird if a door is shuffled over an open transition.
+- Fix music in pipe rooms.
+
+## [2.1.2] - 2024-05-13
+
+### Fixed
+- Pyinstaller not finding the hook correctly. For real this time.
+- License file not being preset in the wheel.
+
+## [2.1.1] - 2024-05-13
+
+### Fixed
+- Pyinstaller not finding the hook correctly.
+
+## [2.1.0] - 2024-05-12
+
+### Added
+
+- There is now an option to have a different amount of DNA to unlock the lab.
+- The following sprites have been added: Spider Ball for Prime 1, Missile Launcher, Speed Booster Upgrades and Super Missile Launcher for Dread, Baby Metroid, Beam Burst, Lightning Armor, Phase Drift, Scan Pulse and Spider Ball for Metroid Samus Returns, and Grapple Beam for Super Metroid.
+
+### Changed
+
+- Removed Background Pillars in Water Turbine Station, to avoid issues when placing doors over these open transitions.
+- When Doors are shuffled over Research Site Hatches, they are now not obscured by the rock background.
+- The following sprites were changed in order to fit more with AM2R's art style: Ice Missiles and Storm Missiles for Dread, Annihilator Beam, Dark Suit, Dark Visor, Echo Visor, Light Suit and Progressive Suit for Echoes, Gravity Suit, Phazon Suit and Varia Suit for Prime 1.
+
+### Fixed
+
+- Several things when placing doors on open transitions: they're now more in the background and stick out less.
+- When Research Site Hatches are shuffled to Ammo doors (Missile, Super Missile, Power Bomb), they will now get unlocked automatically when going through them.
+- Pipe rooms keeping their previous water or darkness level in pipe shuffle.
+
+## [2.0.0] - 2024-04-09
+
+### Changed
+- The JSON input now uses (Super) Missile/Power Bomb *Tanks* instead of Expansions.
+
+## [1.2.15] - 2024-03-13
+
+### Fixed
+- Hitting Zetas with Charge Beam works again.
+
+## [1.2.14] - 2024-02-24
+
+### Added
+- When hitting a Metroid with Charge Beams, but the other items not disabled, a message will appear
+- The following sprites were added for Dread: Energy Tanks, Missile Tanks, Missile Tank+, Power Bomb Launcher, Power Bomb Tank, Varia Suit
+
+### Changed
+- The following sprites were changed in order to fit more with AM2R's art style: Dread's Energy Part, Dread's Wide Beam, Echoes' Amber Translator, Echoes' Cobalt Translator, Echoes' Dark Agon Key, Echoes' Darkburst, Echoes' Dark Torvus Key, Echoes' Emerald Translator, Echoes' Ing Hive Key, Echoes' Sky Temple Key, Echoes' Super Missiles, Echoes' Violet Translator
+
+### Fixed
+- Rare crash when receiving a flashlight/blindfold in a Multiworld session.
+
+## [1.2.13] - 2024-02-07
+
+### Fixed
+- When receiving a suit in a Multiworld, the suit transition cutscene will not place you at a room's (0,0) coordinate anymore.
+
+## [1.2.12] - 2024-02-03
+
+### Fixed
+- When receiving a suit in a Multiworld, the suit transition cutscene will now not play in invalid rooms anymore.
+
+## [1.2.11] - 2024-01-30
+
+### Fixed
+- Ammo will now show correctly in external autotrackers after collecting a Launcher.
+
+## [1.2.10] - 2024-01-28
+
+### Fixed
+- The yams.json file is now properly deleted for race seeds
+
+## [1.2.9] - 2024-01-28
+
+### Changed
+- Changed sprites for Flashlight, Blindfold, Light Beam, Sonic Boom, Prime 1 Super Missiles, Flamethrower, Ice Spreader and Wave Buster
+- The yams.json file is now deleted for race seeds.
+
+## [1.2.8] - 2024-01-27
+
+### Fixed
+- Launching the `start-rando.sh` shell script now works more reliably.
+
+## [1.2.7] - 2024-01-26
+
+### Fixed
+- Patcher crashing when patching.
+
+## [1.2.6] - 2024-01-26
+
+### Added
+- Added sprites for Progressive Jump, Progressive Suit and a Generic CaveStory sprite.
+
+### Changed
+- Changed how the Dread Wide Beam sprite looks
+
+## [1.2.5] - 2024-01-23
+
+### Fixed
+- Getting progressive items in Multiworlds should hopefully now properly work for external item trackers.
+
+## [1.2.4] - 2024-01-22
+
+### Fixed
+- Made the new Dread and Prime 1 sprites actually work.
+
+## [1.2.3] - 2024-01-21
+
+### Added
+- New Dread sprites: Diffusion beam, Flash Shift, Pulse Radar, Phantom Cloak and Space Jump.
+- New Prime 1 sprites: Seperate sprites for all individual artifacts.
+
+### Fixed
+- ELM wil now work again.
+- Getting progressive items in Multiworlds will now properly work for external item trackers.
+
+### Removed
+- The game will not log Multiworld occurences to a debug log anymore.
+
+## [1.2.2] - 2024-01-17
+
+### Fixed
+- Fix Echoes Power Bomb Launcher sprites not being actually added.
+
+## [1.2.1] - 2024-01-17
+### Changed
+- Rename `sItemDarkBeam` to `sItemDarkBeamEchoes` and `sItemArtifact` to `sItemArtifactPrime`.
+
+### Fixed
+- Ammo and Launchers will not give a bunch ammo to Multiworld trackers.
+- Progressives should now always display correctly on Multiworld trackers.
 
 ## [1.2.0] - 2024-01-14
 ### Added

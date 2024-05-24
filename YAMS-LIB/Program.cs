@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.ComponentModel.Design;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using NaturalSort.Extension;
@@ -65,512 +66,10 @@ public class Patcher
         string controlCreate = gmData.Code.ByName("gml_Object_oControl_Create_0").GetGMLCode();
         if (!controlCreate.Contains("global.am2r_version = \"V1.5.5\"")) throw new InvalidAM2RVersionException("The selected game is not AM2R 1.5.5!");
 
-
         // Import new Sprites
-        var nameToPageItemDict = new Dictionary<string, int>();
-        const int pageDimension = 1024;
-        int lastUsedX = 0, lastUsedY = 0, currentShelfHeight = 0;
-        var newTexturePage = new Image<Rgba32>(pageDimension, pageDimension);
-        UndertaleEmbeddedTexture? utTexturePage = new UndertaleEmbeddedTexture();
-        utTexturePage.TextureHeight = utTexturePage.TextureWidth = pageDimension;
-        gmData.EmbeddedTextures.Add(utTexturePage);
+        Sprites.Apply(gmData, decompileContext, seedObject);
 
-        void AddAllSpritesFromDir(string dirPath)
-        {
-            // Recursively add sprites from subdirs
-            foreach (string subDir in Directory.GetDirectories(dirPath))
-            {
-                AddAllSpritesFromDir(subDir);
-            }
-
-            foreach (string filePath in Directory.GetFiles(dirPath))
-            {
-                string extension = new FileInfo(filePath).Extension;
-                if (String.IsNullOrWhiteSpace(extension) || extension == ".md" || extension == ".txt") continue;
-
-                Image sprite = Image.Load(filePath);
-                currentShelfHeight = Math.Max(currentShelfHeight, sprite.Height);
-                if (lastUsedX + sprite.Width > pageDimension)
-                {
-                    lastUsedX = 0;
-                    lastUsedY += currentShelfHeight;
-                    currentShelfHeight = sprite.Height + 1; // One pixel padding
-
-                    if (sprite.Width > pageDimension)
-                    {
-                        throw new NotSupportedException($"Currently a sprite ({filePath}) is bigger than the max size of a {pageDimension} texture page!");
-                    }
-                }
-
-                if (lastUsedY + sprite.Height > pageDimension) throw new NotSupportedException($"Currently all the sprites would be above a {pageDimension} texture page!");
-
-                int xCoord = lastUsedX;
-                int yCoord = lastUsedY;
-                newTexturePage.Mutate(i => i.DrawImage(sprite, new Point(xCoord, yCoord), 1));
-                UndertaleTexturePageItem pageItem = new UndertaleTexturePageItem();
-                pageItem.SourceX = (ushort)xCoord;
-                pageItem.SourceY = (ushort)yCoord;
-                pageItem.SourceWidth = pageItem.TargetWidth = pageItem.BoundingWidth = (ushort)sprite.Width;
-                pageItem.SourceHeight = pageItem.TargetHeight = pageItem.BoundingHeight = (ushort)sprite.Height;
-                pageItem.TexturePage = utTexturePage;
-                gmData.TexturePageItems.Add(pageItem);
-                lastUsedX += sprite.Width + 1; //One pixel padding
-                nameToPageItemDict.Add(Path.GetFileNameWithoutExtension(filePath), gmData.TexturePageItems.Count - 1);
-            }
-        }
-
-        AddAllSpritesFromDir(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/sprites");
-        using (MemoryStream ms = new MemoryStream())
-        {
-            newTexturePage.Save(ms, PngFormat.Instance);
-            utTexturePage.TextureData = new UndertaleEmbeddedTexture.TexData { TextureBlob = ms.ToArray() };
-        }
-
-        // Replace A4 doors
-        {
-            UndertaleTexturePageItem? a4DoorTex = gmData.TexturePageItems[nameToPageItemDict["newA4Doors"]];
-            Image a4DoorImage = Image.Load(a4DoorTex.TexturePage.TextureData.TextureBlob);
-            a4DoorImage.Mutate(i => i.Crop(new Rectangle(a4DoorTex.SourceX, a4DoorTex.SourceY, a4DoorTex.SourceWidth, a4DoorTex.SourceHeight)));
-            UndertaleTexturePageItem? a4Tex = gmData.Backgrounds.ByName("tlArea4Tech").Texture;
-            Image a4PageImage = Image.Load(a4Tex.TexturePage.TextureData.TextureBlob);
-            a4PageImage.Mutate(i => i.DrawImage(a4DoorImage, new Point(a4Tex.SourceX + 104, a4Tex.SourceY), 1));
-            using (MemoryStream ms = new MemoryStream())
-            {
-                a4PageImage.Save(ms, PngFormat.Instance);
-                a4Tex.TexturePage.TextureData.TextureBlob = ms.ToArray();
-            }
-
-            UndertaleTexturePageItem? a4door2Tex = gmData.TexturePageItems[nameToPageItemDict["newA4Doors2"]];
-            Image a4Door2Image = Image.Load(a4door2Tex.TexturePage.TextureData.TextureBlob);
-            a4Door2Image.Mutate(i => i.Crop(new Rectangle(a4door2Tex.SourceX, a4door2Tex.SourceY, a4door2Tex.SourceWidth, a4door2Tex.SourceHeight)));
-            UndertaleTexturePageItem? a4Tex2 = gmData.Backgrounds.ByName("tlArea4Tech2").Texture;
-            Image a4Page2Image = Image.Load(a4Tex2.TexturePage.TextureData.TextureBlob);
-            a4Page2Image.Mutate(i => i.DrawImage(a4Door2Image, new Point(a4Tex2.SourceX + 104, a4Tex2.SourceY), 1));
-            using (MemoryStream ms = new MemoryStream())
-            {
-                a4Page2Image.Save(ms, PngFormat.Instance);
-                a4Tex2.TexturePage.TextureData.TextureBlob = ms.ToArray();
-            }
-        }
-
-        UndertaleSimpleList<UndertaleSprite.TextureEntry> GetTexturePageItemsForSpriteName(string name)
-        {
-            var list = new UndertaleSimpleList<UndertaleSprite.TextureEntry>();
-            foreach (string key in nameToPageItemDict.Keys.OrderBy(k => k, StringComparison.OrdinalIgnoreCase.WithNaturalSort()))
-            {
-                if (key.StartsWith(name)) list.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict[key]] });
-            }
-
-            return list;
-        }
-
-        gmData.Backgrounds.ByName("bg_MapBottom2").Texture = gmData.TexturePageItems[nameToPageItemDict["bg_MapBottom2"]];
-        gmData.Backgrounds.ByName("bgGUIMetCountBG1").Texture = gmData.TexturePageItems[nameToPageItemDict["bgGUIMetCountBG2"]];
-        gmData.Backgrounds.ByName("bgGUIMetCountBG2").Texture = gmData.TexturePageItems[nameToPageItemDict["bgGUIMetCountBG2"]];
-        gmData.Backgrounds.ByName("bgGUIMetCountBG2ELM").Texture = gmData.TexturePageItems[nameToPageItemDict["bgGUIMetCountBG2ELM"]];
-        gmData.Backgrounds.ByName("bgLogImg44B").Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogIce"]];
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA0"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA0"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA1"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA1"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA2"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA2"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA3"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA3"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA4"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA4"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA5"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA5"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground { Name = gmData.Strings.MakeString("bgLogDNA6"), Texture = gmData.TexturePageItems[nameToPageItemDict["bgLogDNA6"]] });
-
-        gmData.Backgrounds.Add(
-            new UndertaleBackground { Name = gmData.Strings.MakeString("tlWarpHideout"), Texture = gmData.TexturePageItems[nameToPageItemDict["tlWarpHideout"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground
-            { Name = gmData.Strings.MakeString("tlWarpDepthsEntrance"), Texture = gmData.TexturePageItems[nameToPageItemDict["tlWarpDepthsEntrance"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground
-            { Name = gmData.Strings.MakeString("tlWarpDepthsExit"), Texture = gmData.TexturePageItems[nameToPageItemDict["tlWarpDepthsExit"]] });
-        gmData.Backgrounds.Add(new UndertaleBackground
-            { Name = gmData.Strings.MakeString("tlWarpWaterfall"), Texture = gmData.TexturePageItems[nameToPageItemDict["tlWarpWaterfall"]] });
-
-
-        gmData.Sprites.ByName("sGUIMissile").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUIMissileSelected"]] });
-        gmData.Sprites.ByName("sGUISMissile").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUISMissileSelected"]] });
-        gmData.Sprites.ByName("sGUIPBomb").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUIPBombSelected"]] });
-        gmData.Sprites.ByName("sGUIMissile").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUIMissileNormal"]] });
-        gmData.Sprites.ByName("sGUISMissile").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUISMissileNormal"]] });
-        gmData.Sprites.ByName("sGUIPBomb").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUIPBombNormal"]] });
-        gmData.Sprites.ByName("sGUIMissile").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUIMissileNormalGreen"]] });
-        gmData.Sprites.ByName("sGUISMissile").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUISMissileNormalGreen"]] });
-        gmData.Sprites.ByName("sGUIPBomb").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sGUIPBombNormalGreen"]] });
-
-        // Replace existing door sprites
-        gmData.Sprites.ByName("sDoorA5Locks").Textures[0].Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorBlue"]];
-        gmData.Sprites.ByName("sDoorA5Locks").Textures[1].Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorMissile"]];
-        gmData.Sprites.ByName("sDoorA5Locks").Textures[2].Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorSuper"]];
-        gmData.Sprites.ByName("sDoorA5Locks").Textures[3].Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorPBomb"]];
-        gmData.Sprites.ByName("sDoorA5Locks").Textures[4].Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorTempLocked"]];
-
-        // Add new sprites for doors
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorChargeBeam"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorWaveBeam"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorSpazerBeam"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorPlasmaBeam"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorIceBeam"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorBomb"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorSpider"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorScrew"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorTowerEnabled"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorTester"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorGuardian"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorArachnus"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorTorizo"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorSerris"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorGenesis"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorQueen"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorEMPActivated"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorEMPA1"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorEMPA2"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorEMPA3"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorA5EMPNearTotem"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorA5EMPRobotHome"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorA5EMPNearSave"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorA5EMPNearBulletHell"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorA5EMPNearPipeHub"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorA5EMPRightExterior"]] });
-        gmData.Sprites.ByName("sDoorA5Locks").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorLocked"]] });
-
-        // New sprites for door animation
-        gmData.Sprites.ByName("sDoorA5").Textures.Clear();
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_1"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_2"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_3"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_4"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_5"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_6"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_7"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_8"]] });
-        gmData.Sprites.ByName("sDoorA5").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sDoorAnim_9"]] });
-
-        void CreateAndAddItemSprite(string name)
-        {
-            gmData.Sprites.Add(new UndertaleSprite
-            {
-                Name = gmData.Strings.MakeString(name), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-                Textures = GetTexturePageItemsForSpriteName(name + "_")
-            });
-        }
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemShinyMissile"), Height = 16, Width = 16,
-            MarginLeft = 3, MarginRight = 12, MarginBottom = 12, MarginTop = 1, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemShinyMissile_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemSmallHealthDrop"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemSmallHealthDrop_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemBigHealthDrop"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemBigHealthDrop_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemMissileDrop"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemMissileDrop_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemSMissileDrop"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemSMissileDrop_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemPBombDrop"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemPBombDrop_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemFlashlight"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemFlashlight_")
-        });
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemBlindfold"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemBlindfold_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemSpeedBoosterUpgrade"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemSpeedBoosterUpgrade_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            // TODO: sprite is offset by a bit? Double check whether thats still the case
-            Name = gmData.Strings.MakeString("sItemNothing"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemNothing_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemUnknown"), Height = 16, Width = 16, MarginRight = 15, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemUnknown_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemShinyNothing"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemShinyNothing_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemShinyScrewAttack"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemScrewAttacker_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemShinyIceBeam"), Height = 16, Width = 16,
-            MarginLeft = 3, MarginRight = 12, MarginBottom = 12, MarginTop = 1, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemShinyIceBeam_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemShinyHijump"), Height = 16, Width = 16,
-            MarginLeft = 3, MarginRight = 12, MarginBottom = 12, MarginTop = 1, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemShinyHijump_")
-        });
-
-        gmData.Sprites.ByName("sItemPowergrip").Textures.Clear();
-        gmData.Sprites.ByName("sItemPowergrip").Textures = GetTexturePageItemsForSpriteName("sItemPowergrip_");
-
-        gmData.Sprites.ByName("sItemMorphBall").Textures.Clear();
-        gmData.Sprites.ByName("sItemMorphBall").Textures = GetTexturePageItemsForSpriteName("sItemMorphBall_");
-
-        gmData.Sprites.ByName("sMapSP").Textures.Add(new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapHint"]] });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sMapBlockUnexplored"), Height = 8, Width = 8,
-            Textures =
-            {
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapBlockUnexplored"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapBlockUnexplored"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapBlockUnexplored"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapBlockUnexplored"]] }
-            }
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sMapCornerUnexplored"), Height = 8, Width = 8,
-            Textures =
-            {
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[0].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[1].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[2].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[3].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[4].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[5].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[6].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[7].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[8].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[9].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[10].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[11].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[12].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[13].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[14].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[15].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.Sprites.ByName("sMapCorner").Textures[16].Texture },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_0"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_1"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_0"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_1"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_0"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_1"]] },
-
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_2"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_3"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_4"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_5"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_2"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_3"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_4"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_5"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_2"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_3"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_4"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_5"]] },
-
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_6"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_7"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_8"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_9"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_6"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_7"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_8"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_9"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_6"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_7"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_8"]] },
-                new UndertaleSprite.TextureEntry { Texture = gmData.TexturePageItems[nameToPageItemDict["sMapCornerUnexplored_9"]] }
-            }
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemMissileLauncher"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemMissileLauncher_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemSMissileLauncher"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemSMissileLauncher_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemPBombLauncher"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemPBombLauncher_")
-        });
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sItemDNA"), Height = 16, Width = 16, MarginRight = 14, MarginBottom = 15, OriginX = 0, OriginY = 16,
-            Textures = GetTexturePageItemsForSpriteName("sItemDNA_")
-        });
-
-        // New sprites for dna septogg
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sWisdomSeptogg"), Height = 35, Width = 47, MarginLeft = 14, MarginRight = 32, MarginBottom = 11, MarginTop = 6, OriginX = 23,
-            OriginY = 35,
-            Textures = GetTexturePageItemsForSpriteName("sWisdomSeptogg_")
-        });
-
-        #region MW sprites
-
-        CreateAndAddItemSprite("sItemRDV");
-
-        #region Prime1
-        CreateAndAddItemSprite("sItemArtifactPrime");
-        CreateAndAddItemSprite("sItemBombsPrime");
-        CreateAndAddItemSprite("sItemBoostBallPrime");
-        CreateAndAddItemSprite("sItemCombatVisorPrime");
-        CreateAndAddItemSprite("sItemFlamethrowerPrime");
-        CreateAndAddItemSprite("sItemGrappleBeamPrime");
-        CreateAndAddItemSprite("sItemGravitySuitPrime");
-        CreateAndAddItemSprite("sItemIceBeamPrime");
-        CreateAndAddItemSprite("sItemIceSpreaderPrime");
-        CreateAndAddItemSprite("sItemMorphBallPrime");
-        CreateAndAddItemSprite("sItemPhazonSuitPrime");
-        CreateAndAddItemSprite("sItemPlasmaBeamPrime");
-        CreateAndAddItemSprite("sItemPowerBeamPrime");
-        CreateAndAddItemSprite("sItemPowerBombLauncherPrime");
-        CreateAndAddItemSprite("sItemScanVisorPrime");
-        CreateAndAddItemSprite("sItemSuperMissilePrime");
-        CreateAndAddItemSprite("sItemThermalVisorPrime");
-        CreateAndAddItemSprite("sItemVariaSuitPrime");
-        CreateAndAddItemSprite("sItemWaveBeamPrime");
-        CreateAndAddItemSprite("sItemWaveBusterPrime");
-        CreateAndAddItemSprite("sItemXrayVisorPrime");
-        #endregion
-        #region Prime 2 Echoes
-        CreateAndAddItemSprite("sItemAmberEchoes");
-        CreateAndAddItemSprite("sItemAnnihilatorEchoes");
-        CreateAndAddItemSprite("sItemBeamAmmoEchoes");
-        CreateAndAddItemSprite("sItemCannonBallEchoes");
-        CreateAndAddItemSprite("sItemCobaltEchoes");
-        CreateAndAddItemSprite("sItemDarkAgonKeyEchoes");
-        CreateAndAddItemSprite("sItemDarkAmmoEchoes");
-        CreateAndAddItemSprite("sItemDarkBeamEchoes");
-        CreateAndAddItemSprite("sItemDarkSuitEchoes");
-        CreateAndAddItemSprite("sItemDarkTorvusKeyEchoes");
-        CreateAndAddItemSprite("sItemDarkVisorEchoes");
-        CreateAndAddItemSprite("sItemDarkburstEchoes");
-        CreateAndAddItemSprite("sItemEchoVisorEchoes");
-        CreateAndAddItemSprite("sItemEmeraldEchoes");
-        CreateAndAddItemSprite("sItemIngHiveKeyEchoes");
-        CreateAndAddItemSprite("sItemLightAmmoEchoes");
-        CreateAndAddItemSprite("sItemLightBeamEchoes");
-        CreateAndAddItemSprite("sItemLightSuitEchoes");
-        CreateAndAddItemSprite("sItemPowerBombLauncherEchoes");
-        CreateAndAddItemSprite("sItemProgressiveSuitEchoes");
-        CreateAndAddItemSprite("sItemScrewAttackEchoes");
-        CreateAndAddItemSprite("sItemSeekerMissileEchoes");
-        CreateAndAddItemSprite("sItemSkyTempleKeyEchoes");
-        CreateAndAddItemSprite("sItemSuperMissileEchoes");
-        CreateAndAddItemSprite("sItemSonicBoomEchoes");
-        CreateAndAddItemSprite("sItemVioletEchoes");
-        #endregion
-
-        #region Metroid Dread
-        CreateAndAddItemSprite("sItemCrossBombsDread");
-        CreateAndAddItemSprite("sItemEPartDread");
-        CreateAndAddItemSprite("sItemGrappleBeamDread");
-        CreateAndAddItemSprite("sItemIceMissilesDread");
-        CreateAndAddItemSprite("sItemMorphBallDread");
-        CreateAndAddItemSprite("sItemSpeedBoosterDread");
-        CreateAndAddItemSprite("sItemSpiderMagnetDread");
-        CreateAndAddItemSprite("sItemSpinBoostDread");
-        CreateAndAddItemSprite("sItemStormMissilesDread");
-        #endregion
-        #endregion
-
-        void RotateTextureAndSaveToTexturePage(int rotation, UndertaleTexturePageItem texture)
-        {
-            using Image texturePage = Image.Load(texture.TexturePage.TextureData.TextureBlob);
-            texturePage.Mutate(im => im.Hue(rotation, new Rectangle(texture.SourceX, texture.SourceY, texture.SourceWidth, texture.SourceHeight)));
-
-            using MemoryStream ms = new MemoryStream();
-            texturePage.Save(ms, PngFormat.Instance);
-            texture.TexturePage.TextureData.TextureBlob = ms.ToArray();
-        }
-
-        // Hue shift etanks
-        if (seedObject.Cosmetics.EtankHUDRotation != 0)
-        {
-            foreach (UndertaleSprite.TextureEntry? textureEntry in gmData.Sprites.ByName("sGUIETank").Textures)
-            {
-                RotateTextureAndSaveToTexturePage(seedObject.Cosmetics.EtankHUDRotation, textureEntry.Texture);
-            }
-        }
-
-        // Hue shift health numbers
-        if (seedObject.Cosmetics.HealthHUDRotation != 0)
-        {
-            foreach (UndertaleSprite.TextureEntry? textureEntry in gmData.Sprites.ByName("sGUIFont1").Textures.Concat(gmData.Sprites.ByName("sGUIFont1A").Textures))
-            {
-                RotateTextureAndSaveToTexturePage(seedObject.Cosmetics.HealthHUDRotation, textureEntry.Texture);
-            }
-        }
-
-        // Hue shift dna icon
-        if (seedObject.Cosmetics.DNAHUDRotation != 0)
-        {
-            foreach (UndertaleBackground bg in new List<UndertaleBackground> { gmData.Backgrounds.ByName("bgGUIMetCountBG1"), gmData.Backgrounds.ByName("bgGUIMetCountBG2ELM") })
-            {
-                RotateTextureAndSaveToTexturePage(seedObject.Cosmetics.DNAHUDRotation, bg.Texture);
-            }
-        }
-
-        // Sabre's new skippy design for Skippy the Bot
-        if (seedObject.Patches.SabreSkippy)
-        {
-            foreach (string spriteName in new[] { "sAutoadP", "sAutoadPFang", "sAutoadPClaw" })
-            {
-                UndertaleSprite? sprite = gmData.Sprites.ByName(spriteName);
-                sprite.Textures[0].Texture = gmData.TexturePageItems[nameToPageItemDict[spriteName]];
-            }
-        }
+        CosmeticHud.Apply(gmData, decompileContext, seedObject);
 
         // Shuffle Music
         MusicShuffle.ShuffleMusic(Path.GetDirectoryName(outputAm2rPath), seedObject.Cosmetics.MusicShuffleDict);
@@ -609,10 +108,6 @@ public class Patcher
         gmData.GameObjects.Add(oWisdomSeptogg);
 
         UndertaleCode? characterVarsCode = gmData.Code.ByName("gml_Script_load_character_vars");
-
-        // Fix power grip sprite
-        gmData.Sprites.ByName("sItemPowergrip").OriginX = 0;
-        gmData.Sprites.ByName("sItemPowergrip").OriginY = 16;
 
         // Remove other game modes, rename "normal" to "Randovania"
         UndertaleCode? gameSelMenuStepCode = gmData.Code.ByName("gml_Object_oGameSelMenu_Step_0");
@@ -663,6 +158,9 @@ public class Patcher
         // Killing queen should not lock you out of the rest of the game
         gmData.Code.ByName("gml_RoomCC_rm_a0h01_3762_Create").AppendGMLInCode("instance_destroy()");
         gmData.Code.ByName("gml_Room_rm_a0h01_Create").AppendGMLInCode("tile_layer_delete(-119)");
+
+        // Make Logbook colored
+        ColoredLogBook.Apply(gmData, decompileContext, seedObject);
 
         // For pause menu, draw now the same as equipment menu because doing determining what max total health/missiles/etc. are would be spoilery and insane to figure out
         UndertaleCode? ssDraw = gmData.Code.ByName("gml_Object_oSS_Fg_Draw_0");
@@ -1142,13 +640,40 @@ public class Patcher
                      "gml_Object_oMOmegaMask2_Collision_439", "gml_Object_oMOmegaMask3_Collision_439"
                  })
         {
-            gmData.Code.ByName(name).ReplaceGMLInCode("&& global.missiles == 0 && global.smissiles == 0", "");
+            var codeEntry = gmData.Code.ByName(name);
+            codeEntry.ReplaceGMLInCode("&& global.missiles == 0 && global.smissiles == 0", "");
+            if (codeEntry.GetGMLCode().Contains("""
+                    else
+                    {
+                    """))
+            {
+
+
+                codeEntry.ReplaceGMLInCode("""
+                    else
+                    {
+                    """,
+                    """
+                    else
+                    {
+                        if (oBeam.chargebeam) popup_text("Unequip beams to deal Charge damage")
+                    """);
+            }
+            else
+            {
+                codeEntry.AppendGMLInCode("""
+                else
+                {
+                    if (oBeam.chargebeam) popup_text("Unequip beams to deal Charge damage")
+                }
+                """);
+            }
         }
 
         // Replace Metroids counters with DNA counters
         UndertaleCode? drawGuiCode = gmData.Code.ByName("gml_Script_draw_gui");
         drawGuiCode.ReplaceGMLInCode("global.monstersleft", "global.dna");
-        drawGuiCode.ReplaceGMLInCode("global.monstersarea", "46 - global.dna");
+        drawGuiCode.ReplaceGMLInCode("global.monstersarea", $"(max((46 - global.dna), 0))");
         gmData.Code.ByName("gml_Object_oOptionsDisplay_Other_14").ReplaceGMLInCode("get_text(\"OptionsDisplay\", \"MonsterCounter\")", "\"DNA Counter\"");
         gmData.Code.ByName("gml_Object_oOptionsDisplay_Other_10").ReplaceGMLInCode("get_text(\"OptionsDisplay\", \"MonsterCounter\")", "\"DNA Counter\"");
         gmData.Code.ByName("gml_Object_oOptionsDisplay_Other_13").ReplaceGMLInCode("get_text(\"OptionsDisplay\", \"MonsterCounter_Tip\")",
@@ -1906,6 +1431,41 @@ public class Patcher
                                                             global.curropt = 0
                                                 """);
 
+        // Add Long Beam as an item
+        characterVarsCode.PrependGMLInCode("global.hasLongBeam = 0;");
+        gmData.Code.ByName("gml_Object_oBeam_Create_0").AppendGMLInCode("existingTimer = 12;");
+        gmData.Code.ByName("gml_Object_oBeam_Step_0").PrependGMLInCode("if (existingTimer > 0) existingTimer--; if (existingTimer <= 0 && !global.hasLongBeam) instance_destroy()");
+
+        // Add WJ as item
+        characterVarsCode.PrependGMLInCode("global.hasWJ = 0;");
+        gmData.Code.ByName("gml_Script_characterStepEvent").ReplaceGMLInCode(
+            "if (state == JUMPING && statetime > 4 && position_meeting(x, (y + 8), oSolid) == 0 && justwalljumped == 0 && walljumping == 0 && monster_drain == 0)",
+            "if (state == JUMPING && statetime > 4 && position_meeting(x, (y + 8), oSolid) == 0 && justwalljumped == 0 && walljumping == 0 && monster_drain == 0 && global.hasWJ)");
+
+        // Add IBJ as item
+        characterVarsCode.PrependGMLInCode("global.hasIBJ = 0;");
+        gmData.Code.ByName("gml_Script_characterCreateEvent").AppendGMLInCode("IBJ_MIDAIR_MAX = 5; IBJLaidInAir = IBJ_MIDAIR_MAX; IBJ_MAX_BOMB_SEPERATE_TIMER = 4; IBJBombSeperateTimer = -1;");
+        gmData.Code.ByName("gml_Object_oCharacter_Step_0").AppendGMLInCode("if (IBJBombSeperateTimer >= 0) IBJBombSeperateTimer-- if (!platformCharacterIs(IN_AIR)) IBJLaidInAir = IBJ_MIDAIR_MAX;");
+        gmData.Code.ByName("gml_Object_oCharacter_Collision_435").ReplaceGMLInCode("if (isCollisionTop(6) == 0)",
+            """
+            if (!global.hasIBJ)
+            {
+                if (state == AIRBALL)
+                {
+                    if (IBJBombSeperateTimer < 0)
+                        IBJLaidInAir--;
+                }
+                else
+                {
+                    IBJLaidInAir = IBJ_MIDAIR_MAX;
+                }
+                if (IBJLaidInAir <= 0)
+                    exit;
+                IBJBombSeperateTimer = IBJ_MAX_BOMB_SEPERATE_TIMER;
+            }
+            if (isCollisionTop(6) == 0)
+            """);
+
         // Save current hash seed, so we can compare saves later
         characterVarsCode.PrependGMLInCode($"global.gameHash = \"{seedObject.Identifier.WordHash} ({seedObject.Identifier.Hash}) (World: {seedObject.Identifier.WorldUUID})\"");
 
@@ -2061,6 +1621,9 @@ public class Patcher
                                           ds_list_add(list, global.lastOffworldNumber)
                                           ds_list_add(list, global.collectedIndices)
                                           ds_list_add(list, global.collectedItems)
+                                          ds_list_add(list, global.hasWJ)
+                                          ds_list_add(list, global.hasIBJ)
+                                          ds_list_add(list, global.hasLongBeam)
                                           str_list = ds_list_write(list)
                                           ds_list_clear(list)
                                           return str_list;
@@ -2119,6 +1682,15 @@ public class Patcher
                                           global.collectedItems = readline();
                                           if (global.collectedItems == undefined || global.collectedItems == 0)
                                             global.collectedItems = "items:"
+                                          global.hasWJ = readline()
+                                          if (global.hasWJ == undefined)
+                                            global.hasWJ = 1
+                                          global.hasIBJ = readline()
+                                          if (global.hasIBJ == undefined)
+                                            global.hasIBJ = 1
+                                          global.hasLongBeam = readline()
+                                          if (global.hasLongBeam == undefined)
+                                            global.hasLongBeam = 1
                                           ds_list_clear(list)
                                           """);
         gmData.Code.Add(loadGlobalsCode);
@@ -2325,6 +1897,15 @@ public class Patcher
                 case ItemEnum.SpeedBoosterUpgrade:
                     characterVarsCode.ReplaceGMLInCode("global.speedBoosterFramesReduction = 0", $"global.speedBoosterFramesReduction = {quantity}");
                     break;
+                case ItemEnum.Walljump:
+                    characterVarsCode.ReplaceGMLInCode("global.hasWJ = 0", $"global.hasWJ = {quantity}");
+                    break;
+                case ItemEnum.InfiniteBombJump:
+                    characterVarsCode.ReplaceGMLInCode("global.hasIBJ = 0", $"global.hasIBJ = {quantity}");
+                    break;
+                case ItemEnum.LongBeam:
+                    characterVarsCode.ReplaceGMLInCode("global.hasLongBeam = 0", $"global.hasLongBeam = {quantity}");
+                    break;
                 case ItemEnum.Nothing:
                     break;
                 default:
@@ -2332,6 +1913,8 @@ public class Patcher
             }
             characterVarsCode.AppendGMLInCode($"global.collectedItems += \"{item.GetEnumMemberValue()}|{quantity},\"");
         }
+        // After we have gotten our starting items, adjust the DNA counter
+        characterVarsCode.ReplaceGMLInCode("global.dna = ", $"global.dna = (46 - {seedObject.Patches.RequiredDNAmount}) + ");
 
         // Check whether option has been set for non-main launchers or if starting with them, if yes enable the main launchers in character var
         if (!seedObject.Patches.RequireMissileLauncher || seedObject.StartingItems.ContainsKey(ItemEnum.MissileLauncher))
@@ -2427,14 +2010,14 @@ public class Patcher
         // Add new item scripts
         gmData.Scripts.AddScript("get_etank", "scr_energytank_character_event()");
         gmData.Scripts.AddScript("get_missile_expansion", $"if (!global.missileLauncher) {{ text1 = \"{seedObject.Patches.LockedMissileText.Header}\"; " +
-                                                          $"text2 = \"{seedObject.Patches.LockedMissileText.Description}\" }} global.collectedItems += (\"{ItemEnum.Missile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_missile_character_event(argument0)");
-        gmData.Scripts.AddScript("get_missile_launcher", $"global.missileLauncher = 1; global.maxmissiles += argument0; global.missiles = global.maxmissiles; global.collectedItems += (\"{ItemEnum.Missile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
+                                                          $"text2 = \"{seedObject.Patches.LockedMissileText.Description}\" }} if (active) global.collectedItems += (\"{ItemEnum.Missile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_missile_character_event(argument0)");
+        gmData.Scripts.AddScript("get_missile_launcher", $"global.missileLauncher = 1; global.maxmissiles += argument0; global.missiles = global.maxmissiles; if (active) global.collectedItems += (\"{ItemEnum.Missile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
         gmData.Scripts.AddScript("get_super_missile_expansion", $"if (!global.SMissileLauncher) {{ text1 = \"{seedObject.Patches.LockedSuperText.Header}\"; " +
-                                                                $"text2 = \"{seedObject.Patches.LockedSuperText.Description}\" }} global.collectedItems += (\"{ItemEnum.SuperMissile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_supermissile_character_event(argument0)");
-        gmData.Scripts.AddScript("get_super_missile_launcher", $"global.SMissileLauncher = 1; global.maxsmissiles += argument0; global.smissiles = global.maxsmissiles; global.collectedItems += (\"{ItemEnum.SuperMissile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
+                                                                $"text2 = \"{seedObject.Patches.LockedSuperText.Description}\" }} if (active) global.collectedItems += (\"{ItemEnum.SuperMissile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_supermissile_character_event(argument0)");
+        gmData.Scripts.AddScript("get_super_missile_launcher", $"global.SMissileLauncher = 1; global.maxsmissiles += argument0; global.smissiles = global.maxsmissiles; if (active) global.collectedItems += (\"{ItemEnum.SuperMissile.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
         gmData.Scripts.AddScript("get_pb_expansion", $"if (!global.PBombLauncher) {{ text1 = \"{seedObject.Patches.LockedPBombText.Header}\"; " +
-                                                     $"text2 = \"{seedObject.Patches.LockedPBombText.Description}\" }} global.collectedItems += (\"{ItemEnum.PBomb.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_powerbomb_character_event(argument0)");
-        gmData.Scripts.AddScript("get_pb_launcher", $"global.PBombLauncher = 1; global.maxpbombs += argument0; global.pbombs = global.maxpbombs; global.collectedItems += (\"{ItemEnum.PBomb.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
+                                                     $"text2 = \"{seedObject.Patches.LockedPBombText.Description}\" }} if (active) global.collectedItems += (\"{ItemEnum.PBomb.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\"); scr_powerbomb_character_event(argument0)");
+        gmData.Scripts.AddScript("get_pb_launcher", $"global.PBombLauncher = 1; global.maxpbombs += argument0; global.pbombs = global.maxpbombs; if (active) global.collectedItems += (\"{ItemEnum.PBomb.GetEnumMemberValue()}\" + \"|\" + string(argument0) + \",\")");
         gmData.Scripts.AddScript("get_dna", "global.dna++; check_areaclear(); ");
         gmData.Scripts.AddScript("get_bombs", "global.bomb = 1; global.hasBombs = 1;");
         gmData.Scripts.AddScript("get_power_grip", "global.powergrip = 1; global.hasPowergrip = 1;");
@@ -2449,6 +2032,8 @@ public class Patcher
                                               if collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true)
                                                   global.SuitChange = 0;
                                               if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
+                                                  global.SuitChange = 0;
+                                              if (room == rm_transition || room == rm_loading || room == itemroom || object_index == oControl)
                                                   global.SuitChange = 0;
                                               global.SuitChangeX = x;
                                               global.SuitChangeY = y;
@@ -2466,7 +2051,7 @@ public class Patcher
         gmData.Scripts.AddScript("get_space_jump", "global.spacejump = 1; global.hasSpacejump = 1; with (oCharacter) sfx_stop(spinjump_sound);");
         gmData.Scripts.AddScript("get_speed_booster", "global.speedbooster = 1; global.hasSpeedbooster = 1;");
         gmData.Scripts.AddScript("get_hijump", "global.hijump = 1; global.hasHijump = 1;");
-        gmData.Scripts.AddScript("get_progressive_jump", "if (global.hasSpacejump) exit; else if (global.hasHijump) { global.spacejump = 1; global.hasSpacejump = 1; with (oCharacter) sfx_stop(spinjump_sound); } else { global.hijump = 1; global.hasHijump = 1;} ");
+        gmData.Scripts.AddScript("get_progressive_jump", $"if (global.hasSpacejump) exit; else if (global.hasHijump) {{ global.spacejump = 1; global.hasSpacejump = 1; with (oCharacter) sfx_stop(spinjump_sound); itemName = \"{ItemEnum.Spacejump.GetEnumMemberValue()}\";}} else {{ global.hijump = 1; global.hasHijump = 1; itemName = \"{ItemEnum.Hijump.GetEnumMemberValue()}\";}} ");
         gmData.Scripts.AddScript("get_gravity", """
                                                 global.SuitChange = !global.skipItemFanfare;
                                                 // If any Metroid exists, force suit cutscene to be off
@@ -2475,6 +2060,8 @@ public class Patcher
                                                 if (collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true))
                                                     global.SuitChange = 0;
                                                 if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
+                                                    global.SuitChange = 0;
+                                                if (room == rm_transition || room == rm_loading || room == itemroom || object_index == oControl)
                                                     global.SuitChange = 0;
                                                 global.SuitChangeX = x;
                                                 global.SuitChangeY = y;
@@ -2489,7 +2076,7 @@ public class Patcher
                                                 }
                                                 if (!hasOCharacter) global.currentsuit = 2
                                                 """);
-        gmData.Scripts.AddScript("get_progressive_suit", """
+        gmData.Scripts.AddScript("get_progressive_suit", $$"""
                                                          global.SuitChange = !global.skipItemFanfare;
                                                          // If any Metroid exists, force suit cutscene to be off
                                                          if (!((instance_number(oMAlpha) <= 0) && (instance_number(oMGamma) <= 0) && (instance_number(oMZeta) <= 0) && (instance_number(oMOmega) <= 0)))
@@ -2497,6 +2084,8 @@ public class Patcher
                                                          if (collision_line((x + 8), (y - 8), (x + 8), (y - 32), oSolid, false, true))
                                                              global.SuitChange = 0;
                                                          if (!(collision_point((x + 8), (y + 8), oSolid, 0, 1)))
+                                                             global.SuitChange = 0;
+                                                         if (room == rm_transition || room == rm_loading || room == itemroom || object_index == oControl)
                                                              global.SuitChange = 0;
                                                          global.SuitChangeX = x;
                                                          global.SuitChangeY = y;
@@ -2506,11 +2095,13 @@ public class Patcher
                                                          {
                                                              global.hasGravity = 1;
                                                              global.SuitChangeGravity = 1;
+                                                             itemName = "{{ItemEnum.Gravity.GetEnumMemberValue()}}"
                                                          }
                                                          else
                                                          {
                                                              global.hasVaria = 1;
                                                              global.SuitChangeGravity = 0;
+                                                             itemName = "{{ItemEnum.Varia.GetEnumMemberValue()}}"
                                                          }
                                                          var hasOCharacter = false;
                                                          with (oCharacter)
@@ -2540,9 +2131,12 @@ public class Patcher
         gmData.Scripts.AddScript("get_missile_drop", "global.missiles += argument0; if (global.missiles > global.maxmissiles) global.missiles = global.maxmissiles");
         gmData.Scripts.AddScript("get_super_missile_drop", "global.smissiles += argument0; if (global.smissiles > global.maxsmissiles) global.smissiles = global.maxsmissiles ");
         gmData.Scripts.AddScript("get_power_bomb_drop", "global.pbombs += argument0; if (global.pbombs > global.maxpbombs) global.pbombs = global.maxpbombs");
-        gmData.Scripts.AddScript("get_flashlight", "global.flashlightLevel += argument0; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); ApplyLightPreset()");
-        gmData.Scripts.AddScript("get_blindfold", "global.flashlightLevel -= argument0; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); ApplyLightPreset()");
+        gmData.Scripts.AddScript("get_flashlight", "global.flashlightLevel += argument0; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); if (instance_exists(oCharacter)) ApplyLightPreset();");
+        gmData.Scripts.AddScript("get_blindfold", "global.flashlightLevel -= argument0; with (oLightEngine) instance_destroy(); with (oFlashlight64) instance_destroy(); if (instance_exists(oCharacter)) ApplyLightPreset();");
         gmData.Scripts.AddScript("get_speed_booster_upgrade", "global.speedBoosterFramesReduction += argument0;");
+        gmData.Scripts.AddScript("get_walljump_upgrade", "global.hasWJ = 1;");
+        gmData.Scripts.AddScript("get_IBJ_upgrade", "global.hasIBJ = 1;");
+        gmData.Scripts.AddScript("get_long_beam", "global.hasLongBeam = 1;");
 
         // Modify every location item, to give the wished item, spawn the wished text and the wished sprite
         foreach ((string pickupName, PickupObject pickup) in seedObject.PickupObjects)
@@ -2564,14 +2158,14 @@ public class Patcher
             {
                 ItemEnum.EnergyTank => "get_etank()",
                 ItemEnum.MissileExpansion => $"get_missile_expansion({pickup.Quantity})",
-                ItemEnum.MissileLauncher => "event_inherited(); if (active) " +
-                                            $"{{ get_missile_launcher({pickup.Quantity}) }}",
+                ItemEnum.MissileLauncher => "if (active) " +
+                                            $"{{ get_missile_launcher({pickup.Quantity}) }} event_inherited(); ",
                 ItemEnum.SuperMissileExpansion => $"get_super_missile_expansion({pickup.Quantity})",
-                ItemEnum.SuperMissileLauncher => "event_inherited(); if (active) " +
-                                                 $"{{ get_super_missile_launcher({pickup.Quantity}) }}",
+                ItemEnum.SuperMissileLauncher => "if (active) " +
+                                                 $"{{ get_super_missile_launcher({pickup.Quantity}) }} event_inherited(); ",
                 ItemEnum.PBombExpansion => $"get_pb_expansion({pickup.Quantity})",
-                ItemEnum.PBombLauncher => "event_inherited(); if (active) " +
-                                          $"{{ get_pb_launcher({pickup.Quantity}) }}",
+                ItemEnum.PBombLauncher => "if (active) " +
+                                          $"{{ get_pb_launcher({pickup.Quantity}) }} event_inherited(); ",
                 var x when Enum.GetName(x).StartsWith("DNA") => "event_inherited(); if (active) { get_dna() }",
                 ItemEnum.Bombs => "btn1_name = \"Fire\"; event_inherited(); if (active) { get_bombs(); }",
                 ItemEnum.Powergrip => "event_inherited(); if (active) { get_power_grip() }",
@@ -2589,7 +2183,7 @@ public class Patcher
                 ItemEnum.Speedbooster => "event_inherited(); if (active) { get_speed_booster() }",
                 ItemEnum.Hijump => "event_inherited(); if (active) { get_hijump() }",
                 ItemEnum.ProgressiveJump =>
-                    "event_inherited(); if (active) { get_progressive_jump() }",
+                    "if (active) { get_progressive_jump() }; event_inherited(); ",
                 ItemEnum.Gravity => """
                                         event_inherited();
                                         if (active)
@@ -2598,11 +2192,11 @@ public class Patcher
                                         }
                                     """,
                 ItemEnum.ProgressiveSuit => """
-                                                event_inherited();
                                                 if (active)
                                                 {
                                                     get_progressive_suit()
-                                                }
+                                                };
+                                                event_inherited();
                                             """,
                 ItemEnum.Charge => "btn1_name = \"Fire\"; event_inherited(); if (active) { get_charge_beam() }",
                 ItemEnum.Ice => "event_inherited(); if (active) { get_ice_beam() }",
@@ -2625,6 +2219,9 @@ public class Patcher
                 ItemEnum.Blindfold =>
                     $"event_inherited(); if (active) {{ get_blindfold({pickup.Quantity}); }}",
                 ItemEnum.SpeedBoosterUpgrade => $"event_inherited(); if (active) {{ get_speed_booster_upgrade({pickup.Quantity}); }}",
+                ItemEnum.Walljump => "event_inherited(); if (active) { get_walljump_upgrade(); }",
+                ItemEnum.InfiniteBombJump => "event_inherited(); if (active) { get_IBJ_upgrade(); }",
+                ItemEnum.LongBeam => "event_inherited(); if (active) { get_long_beam(); }",
                 ItemEnum.Nothing => "event_inherited();",
                 _ => throw new NotSupportedException("Unsupported item! " + pickup.ItemEffect)
             };
@@ -2941,8 +2538,6 @@ public class Patcher
         characterVarsCode.AppendGMLInCode("global.event[205] = global.skipCutscenes");
         // Omega Mutation cutscene - event 300
         characterVarsCode.AppendGMLInCode("global.event[300] = global.skipCutscenes");
-        // Hatchling cutscene - 302
-        characterVarsCode.AppendGMLInCode("global.event[302] = global.skipCutscenes");
         // Also still increase the metroid counters from the hatchling cutscene
         gmData.Code.ByName("gml_Object_oEggTrigger_Create_0").PrependGMLInCode("""
                                                                                if (global.skipCutscenes && !global.event[302])
@@ -3086,6 +2681,45 @@ public class Patcher
         // Pipe rando
         // TODO: optimization could be made here, by letting rdv provide the room where the instance id is, thus not neeeding to crawl over every room.
         // TODO: for this (And for entrance rando) i need to go through each room, and set the correct global.darkness, global.water and music value.
+        // FIXME: temporary hack to change darkness, waterlevel and music value for all pipe rooms.
+
+        foreach (var roomName in new[]
+                 {
+                     "rm_a1a11",
+                     "rm_a2a18",
+                     "rm_a2a19",
+                     "rm_a3a27",
+                     "rm_a4h16",
+                     "rm_a4a14",
+                     "rm_a5c14",
+                     "rm_a5b03",
+                     "rm_a5b08",
+                     "rm_a5a01",
+                     "rm_a5a09",
+                     "rm_a5c26",
+                     "rm_a5c31",
+                     "rm_a5c25",
+                     "rm_a5c13",
+                     "rm_a5c17",
+                     "rm_a7b03B",
+                     "rm_a6a11",
+                     "rm_a6b03",
+                     "rm_a6b11",
+                     "rm_a7a07"
+                 })
+        {
+            string musicCode = roomName switch
+            {
+                var s when s.StartsWith("rm_a5b") || (s.StartsWith("rm_a5c") && s != "rm_a5c14") => "if (global.event[250] > 0) mus_change(musArea5B) else mus_change(musArea5A);",
+                "rm_a6b03" or "rm_a6b11" or "rm_a7a07" => "mus_change(musArea6A);",
+                "rm_a6a11" => "mus_change(mus_get_main_song());",
+                _ => "mus_change(musItemAmb);",
+            };
+
+            gmData.Rooms.ByName(roomName).CreationCodeId.PrependGMLInCode($"global.darkness = 0; global.waterlevel = 0; global.watertype = 0; {musicCode}");
+        }
+
+
         foreach (var pipe in seedObject.PipeObjects)
         {
             foreach (UndertaleRoom? room in gmData.Rooms)
@@ -3110,513 +2744,8 @@ public class Patcher
         gmData.Code.ByName("gml_Object_oCreditsText_Create_0")
             .ReplaceGMLInCode("TEXT_ROWS = ", $"if (!global.creditsmenuopt) text = \"{seedObject.CreditsSpoiler}\" + text;\n TEXT_ROWS = ");
 
-
         // Multiworld stuff
-        // Needed variables
-        gmData.Scripts.AddScript("mw_debug", """
-        var totalString = string(current_hour) + ":" + string(current_minute) + "." + string(current_second) + " - " + argument0
-        show_debug_message(totalString);
-        var f = file_text_open_append(working_directory + "/mw-debug-" + oControl.year + oControl.month + oControl.day + oControl.hour + oControl.minute + ".txt")
-        file_text_write_string(f, totalString)
-        file_text_writeln(f)
-        file_text_close(f)
-        """);
-
-        gmData.Sprites.Add(new UndertaleSprite
-        {
-            Name = gmData.Strings.MakeString("sDisconnected"), Height = 8, Width = 8, MarginRight = 7, MarginBottom = 7, OriginX = 0, OriginY = 8,
-            Textures = GetTexturePageItemsForSpriteName("sDisconnected")
-        });
-
-        gmData.Code.ByName("gml_Object_oControl_Create_0").PrependGMLInCode($"""
-        year = string(current_year)
-        month = string(current_month)
-        day = string(current_day)
-        hour = string(current_hour)
-        minute = string(current_minute)
-        PACKET_HANDSHAKE=1
-        PACKET_UUID=2
-        PACKET_LOG=3
-        PACKET_KEEP_ALIVE=4
-        PACKET_NEW_INVENTORY=5
-        PACKET_NEW_LOCATION=6
-        PACKET_RECEIVED_PICKUPS=7
-        PACKET_GAME_STATE=8
-        PACKET_DISPLAY_MESSAGE=9
-        PACKET_MALFORMED=10
-        socketServer = network_create_server_raw(0, 2016, 1)
-        if (socketServer < 0) mw_debug("The port 2016 was not able to be opened!")
-        packetNumber = 0
-        networkProtocolVersion = 1
-        hasConnectedAtLeastOnce = false
-        hasConnectedAlpha = 1
-        hasConnectedAlphaDirection = 0
-        currentGameUuid = "{seedObject.Identifier.WorldUUID}"
-        clientState = 0
-        CLIENT_DISCONNECTED = 0
-        CLIENT_HANDSHAKE_CONNECTION = 1
-        CLIENT_FULLY_CONNECTED = 2
-        clientSocket = 0
-        messageDisplay = ""
-        messageDisplayTimer = 0
-        MESSAGE_DISPLAY_TIMER_INITIAL = 360
-        fetchPickupTimer = -1
-        PICKUP_TIMER_INITIAL = 180
-        global.lastOffworldNumber = 0
-        global.collectedIndices = "locations:"
-        global.collectedItems = "items:"
-        tempTimer = 0
-        mw_debug("Multiworld variables initialized");
-        """);
-
-        // Also add the save items to character vars
-        characterVarsCode.PrependGMLInCode("""
-        global.lastOffworldNumber = 0
-        global.collectedIndices = "locations:"
-        global.collectedItems = "items:"
-        """);
-
-        // Add script to send location and inventory info
-        gmData.Scripts.AddScript("send_location_and_inventory_packet", """
-        if (oControl.socketServer >= 0 && oControl.clientState >= oControl.CLIENT_FULLY_CONNECTED)
-        {
-            mw_debug("Sending location+inventory packet:")
-            mw_debug("Current locations: " + global.collectedIndices)
-            mw_debug("Current inventory: " + global.collectedItems)
-            var collectedLocation = buffer_create(512, buffer_grow, 1)
-            buffer_seek(collectedLocation, buffer_seek_start, 0)
-            buffer_write(collectedLocation, buffer_u8, oControl.PACKET_NEW_LOCATION)
-            var currentPos = buffer_tell(collectedLocation)
-            buffer_write(collectedLocation, buffer_text, global.collectedIndices)
-            var length = (buffer_tell(collectedLocation) - currentPos)
-            buffer_seek(collectedLocation, buffer_seek_start, currentPos)
-            buffer_write(collectedLocation, buffer_u16, length)
-            buffer_write(collectedLocation, buffer_text, global.collectedIndices)
-            network_send_raw(oControl.clientSocket, collectedLocation, buffer_get_size(collectedLocation))
-            mw_debug("Sent location packet")
-            buffer_delete(collectedLocation)
-            var collectedItem = buffer_create(512, buffer_grow, 1)
-            buffer_seek(collectedItem, buffer_seek_start, 0)
-            buffer_write(collectedItem, buffer_u8, oControl.PACKET_NEW_INVENTORY)
-            currentPos = buffer_tell(collectedItem)
-            buffer_write(collectedItem, buffer_text, global.collectedItems)
-            length = (buffer_tell(collectedItem) - currentPos)
-            buffer_seek(collectedItem, buffer_seek_start, currentPos)
-            buffer_write(collectedItem, buffer_u16, length)
-            buffer_write(collectedItem, buffer_text, global.collectedItems)
-            network_send_raw(oControl.clientSocket, collectedItem, buffer_get_size(collectedItem))
-            mw_debug("Sent inventory packet")
-            buffer_delete(collectedItem)
-        }
-        """);
-
-
-        // Send collected item and location when collecting items
-        gmData.Code.ByName("gml_Object_oItem_Other_10").ReplaceGMLInCode("instance_destroy()", """
-        global.collectedIndices += (string(itemid) + ",")
-        global.collectedItems += (((string(itemName) + "|") + string(itemQuantity)) + ",")
-        mw_debug("Local item was collected: location " + string(itemid) + " , name " + string(itemName) + " quantity " + string(itemQuantity))
-        send_location_and_inventory_packet();
-        instance_destroy();
-        """);
-
-        // Send collected items and locations when loading saves
-        gmData.Code.ByName("gml_Object_oLoadGame_Other_10").AppendGMLInCode("""
-        mw_debug("Some save got loaded")
-        send_room_info_packet(global.start_room);
-        send_location_and_inventory_packet();
-        """);
-
-        // Send room info when transition rooms
-        gmData.Scripts.AddScript("send_room_info_packet", """
-        var rm = argument0;
-        if (rm == undefined)
-            rm = room
-        if (oControl.socketServer >= 0 && oControl.clientState >= oControl.CLIENT_FULLY_CONNECTED)
-        {
-            mw_debug("Sending room info packet, with room " + string(room_get_name(rm)))
-            var roomName = buffer_create(512, buffer_grow, 1)
-            buffer_seek(roomName, buffer_seek_start, 0)
-            buffer_write(roomName, buffer_u8, oControl.PACKET_GAME_STATE)
-            var currentPos = buffer_tell(roomName)
-            buffer_write(roomName, buffer_text, string(room_get_name(rm)))
-            var length = (buffer_tell(roomName) - currentPos)
-            buffer_seek(roomName, buffer_seek_start, currentPos)
-            buffer_write(roomName, buffer_u16, length)
-            buffer_write(roomName, buffer_text, string(room_get_name(rm)))
-            network_send_raw(oControl.clientSocket, roomName, buffer_get_size(roomName))
-            mw_debug("Sent room packet")
-            buffer_delete(roomName)
-        }
-        """);
-
-        gmData.Code.ByName("gml_Object_oControl_Other_4").AppendGMLInCode("""
-        mw_debug("Player has changed their room")
-        send_room_info_packet();
-        """);
-
-        // Periodically send what our last received offworld item was
-        gmData.Code.ByName("gml_Object_oControl_Step_0").AppendGMLInCode("""
-        if (socketServer >= 0 && clientState >= oControl.CLIENT_FULLY_CONNECTED && fetchPickupTimer == 0)
-        {
-            mw_debug("Sending PickupTimer packet. Our current value: " + string(global.lastOffworldNumber));
-            fetchPickupTimer = PICKUP_TIMER_INITIAL
-            var pickupBuffer = buffer_create(512, buffer_grow, 1)
-            buffer_seek(pickupBuffer, buffer_seek_start, 0)
-            buffer_write(pickupBuffer, buffer_u8, PACKET_RECEIVED_PICKUPS)
-            var currentPos = buffer_tell(pickupBuffer)
-            buffer_write(pickupBuffer, buffer_text, string(global.lastOffworldNumber))
-            var length = (buffer_tell(pickupBuffer) - currentPos)
-            buffer_seek(pickupBuffer, buffer_seek_start, currentPos)
-            buffer_write(pickupBuffer, buffer_u16,length)
-            buffer_write(pickupBuffer, buffer_text, string(global.lastOffworldNumber))
-            network_send_raw(clientSocket, pickupBuffer, buffer_get_size(pickupBuffer))
-            mw_debug("send receive pickup packet")
-            buffer_delete(pickupBuffer)
-        }
-        fetchPickupTimer--
-        tempTimer++
-        if (tempTimer > 9999) tempTimer = 0
-        """);
-
-        // Show MW messages + cant open port message
-        gmData.Code.ByName("gml_Script_draw_gui").AppendGMLInCode("""
-                                             if (oControl.socketServer < 0)
-                                             {
-                                                 draw_set_font(global.fontGUI2)
-                                                 draw_set_halign(fa_left)
-                                                 draw_cool_text(0, 50, "Could not open Port!#Please try reopening#the game after 2min.", c_black, c_white, c_white, 1)
-                                             }
-                                             if (oControl.hasConnectedAtLeastOnce && (oControl.socketServer >= 0 && clientState == oControl.CLIENT_DISCONNECTED))
-                                             {
-                                                if (oControl.tempTimer % 60 == 0)
-                                                    mw_debug("Showing 'game is disconnected' message.")
-                                                draw_set_font(global.fontGUI2)
-                                                draw_set_halign(fa_left)
-                                                draw_sprite_ext(sDisconnected, 0, 5, 61, 1, 1, 0, c_white, oControl.hasConnectedAlpha);
-                                                if (oControl.hasConnectedAlpha <= 0)
-                                                    oControl.hasConnectedAlphaDirection = 0
-                                                else if (oControl.hasConnectedAlpha >= 1.4)
-                                                    oControl.hasConnectedAlphaDirection = 1
-                                                if (oControl.hasConnectedAlphaDirection == 1)
-                                                    oControl.hasConnectedAlpha -= 0.025
-                                                else if (oControl.hasConnectedAlphaDirection == 0)
-                                                    oControl.hasConnectedAlpha += 0.025
-                                                draw_cool_text(15, 50, "Disconnected!", c_black, c_white, c_white, 1)
-                                             }
-                                             if (global.ingame && oControl.messageDisplay != "" && oControl.messageDisplayTimer > 0)
-                                             {
-                                                 if (oControl.tempTimer % 60 == 0)
-                                                    mw_debug("Showing message display; message: " + string(oControl.messageDisplay) + " timer: " + string(oControl.messageDisplayTimer))
-                                                 draw_set_font(global.fontGUI2)
-                                                 draw_set_halign(fa_center)
-                                                 draw_cool_text(160 + (widescreen_space / 2), 40, oControl.messageDisplay, c_black, c_white, c_white, 1)
-                                                 oControl.messageDisplayTimer--
-                                                 if (oControl.messageDisplayTimer <= 0)
-                                                 {
-                                                     oControl.messageDisplayTimer = 0
-                                                     messageDisplay = ""
-                                                     mw_debug("Timer ran out, resetting both display and timer to empty values")
-                                                 }
-                                                 draw_set_halign(fa_left)
-                                                 draw_set_font(global.fontMenuTiny)
-                                             }
-                                             """);
-
-        // Received network packet event.
-        var oControlNetworkReceived = new UndertaleCode() { Name = gmData.Strings.MakeString("gml_Object_oControl_Other_68") };
-        UndertaleCodeLocals locals = new UndertaleCodeLocals();
-        locals.Name = oControlNetworkReceived.Name;
-        UndertaleCodeLocals.LocalVar argsLocal = new UndertaleCodeLocals.LocalVar();
-        argsLocal.Name = gmData.Strings.MakeString("arguments");
-        argsLocal.Index = 0;
-        locals.Locals.Add(argsLocal);
-        oControlNetworkReceived.LocalsCount = 1;
-        gmData.CodeLocals.Add(locals);
-        oControlNetworkReceived.SubstituteGMLCode($$"""
-        mw_debug("Async Networking event entered")
-        var type_event, _buffer, bufferSize, msgid, handshake, socket, malformed, protocolVer, length, currentPos, i, upperLimit;
-        type_event = ds_map_find_value(async_load, "type")
-        switch type_event
-        {
-            case 1:
-                mw_debug("The client has done the initial connection to our socket")
-                clientSocket = ds_map_find_value(async_load, "socket")
-                break
-            case 2:
-                mw_debug("The client disconnected from the socket, resetting values")
-                clientSocket = 0
-                clientState = CLIENT_DISCONNECTED
-                packetNumber = 0
-                fetchPickupsTimer = -1
-                break
-            case 3:
-                mw_debug("Client send us incoming data")
-                socket = clientSocket
-                if (socket == undefined || socket == 0)
-                    exit
-                mw_debug("Client socket is valid")
-                mw_debug(("Socket: " + string(socket)))
-                _buffer = ds_map_find_value(async_load, "buffer")
-                if (_buffer == undefined)
-                    exit
-                mw_debug("Confirmed for Client to send us valid data")
-                mw_debug(("Buffer id: " + string(_buffer)))
-                bufferSize = buffer_get_size(_buffer)
-                mw_debug("Buffer size: " + string(bufferSize))
-                msgid = buffer_read(_buffer, buffer_u8)
-                mw_debug(("Message ID of the packet: " + string(msgid)))
-                switch msgid
-                {
-                    case PACKET_HANDSHAKE:
-                        mw_debug("Entered Handshake handling.")
-                        mw_debug(("Current client state: " + string(clientState)))
-                        if (clientState == CLIENT_DISCONNECTED)
-                        {
-                            mw_debug("Client is not connected, initiating procedure")
-                            clientState = CLIENT_HANDSHAKE_CONNECTION
-                            mw_debug("Client has been internally set to initial connection")
-                            var handshake = buffer_create(2, buffer_grow, 1)
-                            buffer_seek(handshake, buffer_seek_start, 0)
-                            buffer_write(handshake, buffer_u8, PACKET_HANDSHAKE)
-                            buffer_write(handshake, buffer_u8, string(packetNumber))
-                            network_send_raw(socket, handshake, buffer_get_size(handshake))
-                            buffer_delete(handshake)
-                            packetNumber = ((packetNumber + 1) % 256)
-                            mw_debug("Internal packet number set to " + string(packetNumber))
-                        }
-                        else mw_debug("Client tried to initiate handshake while already connected")
-                        break
-                    case PACKET_UUID:
-                        mw_debug("Client requested UUID")
-                        if (clientState < CLIENT_HANDSHAKE_CONNECTION)
-                        {
-                            mw_debug("Client tried to request UUID while not being connected yet.")
-                            exit
-                        }
-                        mw_debug("Client passed the handshake check")
-                        protocolVer = buffer_create(1024, buffer_grow, 1)
-                        buffer_seek(protocolVer, buffer_seek_start, 0)
-                        buffer_write(protocolVer, buffer_u8, PACKET_UUID)
-                        buffer_write(protocolVer, buffer_u8, string(packetNumber))
-                        currentPos = buffer_tell(protocolVer)
-                        buffer_write(protocolVer, buffer_text, string(networkProtocolVersion) + "," + string(currentGameUuid))
-                        length = (buffer_tell(protocolVer) - currentPos)
-                        buffer_seek(protocolVer, buffer_seek_start, currentPos)
-                        buffer_write(protocolVer, buffer_u16, length)
-                        buffer_write(protocolVer, buffer_text, string(networkProtocolVersion) + "," + string(currentGameUuid))
-                        network_send_raw(socket, protocolVer, buffer_get_size(protocolVer))
-                        mw_debug("Sent protocol packet; api version " + string(networkProtocolVersion) + " uuid " + string(currentGameUuid))
-                        buffer_delete(protocolVer)
-                        packetNumber = ((packetNumber + 1) % 256)
-                        clientState = CLIENT_FULLY_CONNECTED
-                        hasConnectedAtLeastOnce = true
-                        mw_debug("Client has been connected at least once set, Client is fully connected now. Packet number: " + string(packetNumber))
-                        fetchPickupTimer = PICKUP_TIMER_INITIAL
-                        mw_debug("Pickup timer has been set to the initial timer")
-                        send_room_info_packet();
-                        send_location_and_inventory_packet();
-                        break
-                    case PACKET_DISPLAY_MESSAGE:
-                        mw_debug("Client send us a message to show")
-                        var tempMessage = buffer_read(_buffer, buffer_string)
-                        var upperLimit = 45
-                        if widescreen
-                            upperLimit = 50
-                        if (string_length(tempMessage) > upperLimit)
-                            tempMessage = string_insert("-#", tempMessage, upperLimit)
-                        messageDisplay = tempMessage
-                        messageDisplayTimer = MESSAGE_DISPLAY_TIMER_INITIAL
-                        mw_debug("Message that client wants us to show: " + messageDisplay)
-                        break
-                    case PACKET_RECEIVED_PICKUPS:
-                        mw_debug("Client send us pickups that we should receive")
-                        var message = buffer_read(_buffer, buffer_string)
-                        mw_debug("Pickups are in the following message: " + string(message))
-                        var splitBy = "|"
-                        var splitted;
-                        var i = 0
-                        var total = string_count(splitBy, message)
-                        while (i<=total)
-                        {
-                            var limit = string_length(message)+1
-                            if (string_count(splitBy, message) > 0)
-                                limit = string_pos("|", message)
-                            var element = string_copy(message, 1, limit-1)
-                            splitted[i] = element
-                            message = string_copy(message, limit+1, string_length(message)-limit)
-                            i++
-                        }
-
-                        var provider = splitted[0]
-                        var name = splitted[1]
-                        var model = splitted[2]
-                        var quantity = real(splitted[3])
-                        var remoteItemNumber = real(splitted[4])
-                        mw_debug("prov:" + provider + " name:" + name + " model: " + model + " quant: " + string(quantity) + " remote num: " + string(remoteItemNumber))
-                        if (remoteItemNumber <= global.lastOffworldNumber)
-                        {
-                            mw_debug("We have already received this item. Bailing out. Our current item is " + string(global.lastOffworldNumber))
-                            break;
-                        }
-                        var knownItem = true
-                        active = true       // workaround for some scripts
-                        switch (name)
-                        {
-                            case "{{ItemEnum.EnergyTank.GetEnumMemberValue()}}":
-                                get_etank()
-                                break
-                            case "{{ItemEnum.MissileExpansion.GetEnumMemberValue()}}":
-                                get_missile_expansion(quantity)
-                                break
-                            case "{{ItemEnum.MissileLauncher.GetEnumMemberValue()}}":
-                                get_missile_launcher(quantity)
-                                break
-                            case "{{ItemEnum.SuperMissileExpansion.GetEnumMemberValue()}}":
-                                get_super_missile_expansion(quantity)
-                                break
-                            case "{{ItemEnum.SuperMissileLauncher.GetEnumMemberValue()}}":
-                                get_super_missile_launcher(quantity)
-                                break
-                            case "{{ItemEnum.PBombExpansion.GetEnumMemberValue()}}":
-                                get_pb_expansion(quantity)
-                                break
-                            case "{{ItemEnum.PBombLauncher.GetEnumMemberValue()}}":
-                                get_pb_launcher(quantity)
-                                break
-                            case "{{ItemEnum.Bombs.GetEnumMemberValue()}}":
-                                get_bombs()
-                                break
-                            case "{{ItemEnum.Powergrip.GetEnumMemberValue()}}":
-                                get_power_grip()
-                                break
-                            case "{{ItemEnum.Spiderball.GetEnumMemberValue()}}":
-                                get_spider_ball()
-                                break
-                            case "{{ItemEnum.Springball.GetEnumMemberValue()}}":
-                                get_spring_ball()
-                                break
-                            case "{{ItemEnum.Screwattack.GetEnumMemberValue()}}":
-                                get_screw_attack()
-                                break
-                            case "{{ItemEnum.Varia.GetEnumMemberValue()}}":
-                                get_varia()
-                                break
-                            case "{{ItemEnum.Spacejump.GetEnumMemberValue()}}":
-                                get_space_jump()
-                                break
-                            case "{{ItemEnum.Speedbooster.GetEnumMemberValue()}}":
-                                get_speed_booster()
-                                break
-                            case "{{ItemEnum.Hijump.GetEnumMemberValue()}}":
-                                get_hijump()
-                                break
-                            case "{{ItemEnum.ProgressiveJump.GetEnumMemberValue()}}":
-                                get_progressive_jump()
-                                break
-                            case "{{ItemEnum.Gravity.GetEnumMemberValue()}}":
-                                get_gravity()
-                                break
-                            case "{{ItemEnum.ProgressiveSuit.GetEnumMemberValue()}}":
-                                get_progressive_suit()
-                                break
-                            case "{{ItemEnum.Charge.GetEnumMemberValue()}}":
-                                get_charge_beam()
-                                break
-                            case "{{ItemEnum.Ice.GetEnumMemberValue()}}":
-                                get_ice_beam()
-                                break
-                            case "{{ItemEnum.Wave.GetEnumMemberValue()}}":
-                                get_wave_beam()
-                                break
-                            case "{{ItemEnum.Spazer.GetEnumMemberValue()}}":
-                                get_spazer_beam()
-                                break
-                            case "{{ItemEnum.Plasma.GetEnumMemberValue()}}":
-                                get_plasma_beam()
-                                break
-                            case "{{ItemEnum.Morphball.GetEnumMemberValue()}}":
-                                get_morph_ball()
-                                break
-                            case "{{ItemEnum.SmallHealthDrop.GetEnumMemberValue()}}":
-                                get_small_health_drop(quantity);
-                                break
-                            case "{{ItemEnum.BigHealthDrop.GetEnumMemberValue()}}":
-                                get_big_health_drop(quantity)
-                                break
-                            case "{{ItemEnum.MissileDrop.GetEnumMemberValue()}}":
-                                get_missile_drop(quantity)
-                                break
-                            case "{{ItemEnum.SuperMissileDrop.GetEnumMemberValue()}}":
-                                get_super_missile_drop(quantity);
-                                break
-                            case "{{ItemEnum.PBombDrop.GetEnumMemberValue()}}":
-                                get_power_bomb_drop(quantity)
-                                break
-                            case "{{ItemEnum.Flashlight.GetEnumMemberValue()}}":
-                                get_flashlight(quantity);
-                                break
-                            case "{{ItemEnum.Blindfold.GetEnumMemberValue()}}":
-                                get_blindfold(quantity);
-                                break
-                            case "{{ItemEnum.SpeedBoosterUpgrade.GetEnumMemberValue()}}":
-                                get_speed_booster_upgrade(quantity)
-                                break
-                            default:
-                                if (string_count("Metroid DNA", name) > 0)
-                                {
-                                    get_dna()
-                                    break;
-                                }
-                                mw_debug("Have gotten unknown Item.")
-                                knownItem = false
-                                break;
-                        }
-                        var tempMessage = "Received " + name + " from " + provider
-                        if (!knownItem)
-                            tempMessage = "Unknown item from " + provider + "! Please report this!!!"
-                        var upperLimit = 45
-                        if widescreen
-                            upperLimit = 50
-                        if (string_length(tempMessage) > upperLimit)
-                            tempMessage = string_insert("-#", tempMessage, upperLimit)
-                        messageDisplay = tempMessage
-                        messageDisplayTimer = MESSAGE_DISPLAY_TIMER_INITIAL
-                        mw_debug("Message that we'll be showing: " + messageDisplay)
-                        if (knownItem)
-                        {
-                            mw_debug("Item that we received was known to us. Attempting to increase inventory; current: " + string(global.collectedItems))
-                            global.collectedItems += (name + "|" + string(quantity) + ",")
-                            global.lastOffworldNumber = remoteItemNumber
-                            mw_debug("Inventory and lastoffworld set. offworld: " + string(global.lastOffworldNumber) + " inventory: " + string(global.collectedItems))
-                        }
-                        send_location_and_inventory_packet()
-                        active = false
-                        mw_debug("End of Pickup receive handling.")
-                        break;
-                }
-                break
-            default:
-                mw_debug("Unknown message id. Sending malformed packet as response")
-                malformed = buffer_create(1024, buffer_grow, 1)
-                buffer_seek(malformed, buffer_seek_start, 0)
-                buffer_write(malformed, buffer_u8, PACKET_MALFORMED)
-                buffer_write(malformed, buffer_u8, 0)
-                network_send_raw(socket, malformed, buffer_get_size(malformed))
-                buffer_delete(malformed)
-                break
-        }
-        mw_debug("Leaving async networking event")
-        """);
-        gmData.Code.Add(oControlNetworkReceived);
-        var oControlCollisionList = gmData.GameObjects.ByName("oControl").Events[7];
-        var oControlAction = new UndertaleGameObject.EventAction();
-        oControlAction.CodeId = oControlNetworkReceived;
-        var oControlEvent = new UndertaleGameObject.Event();
-        oControlEvent.EventSubtype = 68;
-        oControlEvent.Actions.Add(oControlAction);
-        oControlCollisionList.Add(oControlEvent);
-
+        Multiworld.Apply(gmData, decompileContext, seedObject);
 
         // Write back to disk
         using (FileStream fs = new FileInfo(outputAm2rPath).OpenWrite())

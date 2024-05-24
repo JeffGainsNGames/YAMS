@@ -66,7 +66,8 @@ class Wrapper:
             wrapper_file: str = os.fspath(tempdir_Path.joinpath("start-rando.sh"))
             with open(wrapper_file, "w+") as f:
                 f.write("#!/usr/bin/env bash\n")
-                f.write(f"flatpak run --command=\"{os.fspath(output_path)}/runner\" io.github.am2r_community_developers.AM2RLauncher")
+                f.write('script_dir="$(realpath "$(dirname "${BASH_SOURCE[0]}")")"\n')
+                f.write('flatpak run --command="${script_dir}/runner" io.github.am2r_community_developers.AM2RLauncher\n')
             os.chmod(wrapper_file, 0o775)
 
         # AM2RLauncher installations usually have a profile.xml file. For less confusion, remove it if it exists
@@ -79,6 +80,9 @@ class Wrapper:
         self.csharp_patcher.Main(input_data_win, output_data_win, json_file)
 
         # Move temp dir to output dir and get rid of it. Also delete original data.win
+        # Also delete the json if we're on a race seed.
+        if not patch_data.get("configuration_identifier", {}).get("contains_spoiler", False):
+            input_data_win_path.parent.joinpath("yams-data.json").unlink()
         input_data_win_path.unlink()
         progress_update("Moving to output directory...", 0.8)
         shutil.copytree(tempdir.name, output_path, dirs_exist_ok=True)
