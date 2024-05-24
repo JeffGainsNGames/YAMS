@@ -7,6 +7,7 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - Added ammo drops to Queen
+- Added power bomb drops to all bosses
 
 ## [2.2.0] - 2024-05-19
 
